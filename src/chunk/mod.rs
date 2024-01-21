@@ -21,12 +21,4 @@ impl Chunk {
         self.codes.push(code);
         self.lines.push(line);
     }
-
-    // fn count(&self) -> usize {
-    //     self.codes.len()
-    // }
-    //
-    // fn get(&mut self, index: usize) -> Option<&OperationCode> {
-    //     self.codes.get(index)
-    // }
 }
