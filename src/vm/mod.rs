@@ -3,8 +3,12 @@ use crate::chunk::OperationCode;
 use crate::debug::print_value;
 use crate::value::Value;
 
+#[cfg(test)]
+pub mod tests;
+
 pub struct VirtualMachine;
 
+#[derive(PartialEq, Debug)]
 pub enum InterpretResult {
     Ok,
     CompileError,
@@ -20,8 +24,7 @@ impl VirtualMachine {
         let mut stack: Vec<Value> = vec![];
 
         for op_code in chunk.codes {
-
-            // NOTE: This is for debugging
+            // NOTE: This is for debugging porpuses
             println!("\t{:?}", stack);
 
             match op_code {

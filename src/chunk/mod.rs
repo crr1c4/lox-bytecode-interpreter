@@ -1,5 +1,8 @@
 use crate::value::Value;
 
+#[cfg(test)]
+pub mod tests;
+
 #[derive(Debug)]
 pub enum OperationCode {
     Return,
@@ -8,13 +11,13 @@ pub enum OperationCode {
     Add,
     Substract,
     Multiply,
-    Divide
+    Divide,
 }
 
 #[derive(Default, Debug)]
 pub struct Chunk {
     pub codes: Vec<OperationCode>,
-    pub lines: Vec<u32>
+    pub lines: Vec<u32>,
 }
 
 impl Chunk {
@@ -35,3 +38,5 @@ impl Chunk {
         self.codes.len()
     }
 }
+
+
