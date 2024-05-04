@@ -1,11 +1,11 @@
-pub mod token;
-
 #[cfg(test)]
 pub mod tests;
+pub mod token;
 
 use token::*;
-use std::iter::Iterator;
-// TODO: Change this file, implement Iterator trait for scanning on demand :)
+
+// TODO: Check if EOF is necessary. I think it doesnt xd.
+// TODO: Implement Iterator trait
 
 pub struct Scanner {
     source: String,
@@ -13,6 +13,14 @@ pub struct Scanner {
     current: usize,
     line: i32,
 }
+
+/* impl Iterator for Scanner {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+} */
 
 impl Scanner {
     pub fn new(source: impl Into<String>) -> Self {
@@ -26,182 +34,178 @@ impl Scanner {
 
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
+
         self.start = self.current;
 
         if self.is_at_end() {
-            return self.make_token(TokenType::EOF);
+            return self.make_token(TokenKind::EOF);
         }
 
-        self.advance();
+        self.current += 1;
 
-        if self.peek().unwrap().is_digit(10) {
-            dbg!(self.peek());
-            return self.make_number();
-        } else if self.peek().unwrap().is_alphabetic() || self.peek().unwrap() == '_' {
-            return self.make_identifier();
-        }
-
-        match &self.source[self.start..self.current] {
-            "(" => self.make_token(TokenType::LeftParen),
-            ")" => self.make_token(TokenType::RightParen),
-            "{" => self.make_token(TokenType::LeftBrace),
-            "}" => self.make_token(TokenType::RightBrace),
-            ";" => self.make_token(TokenType::Semicolon),
-            "," => self.make_token(TokenType::Comma),
-            "." => self.make_token(TokenType::Dot),
-            "-" => self.make_token(TokenType::Minus),
-            "+" => self.make_token(TokenType::Plus),
-            "/" => self.make_token(TokenType::Slash),
-            "*" => self.make_token(TokenType::Star),
+        match (self.peek(self.current - 1), self.peek(self.current)) {
+            // Special cases
+            (Some('.'), Some(digit)) if digit.is_ascii_digit() => self.make_number(),
+            (Some('"'), _) => self.make_string(),
+            (Some(digit), _) if digit.is_ascii_digit() => self.make_number(),
+            (Some(character), _) if character.is_alphabetic() || character == '_' => {
+                self.make_identifier_or_keyword()
+            }
+            // Single character
+            (Some('('), _) => self.make_token(TokenKind::LeftParen),
+            (Some(')'), _) => self.make_token(TokenKind::RightParen),
+            (Some('{'), _) => self.make_token(TokenKind::LeftBrace),
+            (Some('}'), _) => self.make_token(TokenKind::RightBrace),
+            (Some(';'), _) => self.make_token(TokenKind::Semicolon),
+            (Some(','), _) => self.make_token(TokenKind::Comma),
+            (Some('.'), _) => self.make_token(TokenKind::Dot),
+            (Some('-'), _) => self.make_token(TokenKind::Minus),
+            (Some('+'), _) => self.make_token(TokenKind::Plus),
+            (Some('/'), _) => self.make_token(TokenKind::Slash),
+            (Some('*'), _) => self.make_token(TokenKind::Star),
             // Two characters match
-            "!" => match self.source.get(self.start..self.current + 1) {
-                Some("!=") => {
-                    self.advance();
-                    self.make_token(TokenType::BangEqual)
-                }
-                _ => self.make_token(TokenType::Bang),
-            },
-            "=" => match self.source.get(self.start..self.current + 1) {
-                Some("==") => {
-                    self.advance();
-                    self.make_token(TokenType::EqualEqual)
-                }
-                _ => self.make_token(TokenType::Equal),
-            },
-            ">" => match self.source.get(self.start..self.current + 1) {
-                Some(">=") => {
-                    self.advance();
-                    self.make_token(TokenType::GreaterEqual)
-                }
-                _ => self.make_token(TokenType::Greater),
-            },
-            "<" => match self.source.get(self.start..self.current + 1) {
-                Some("<=") => {
-                    self.advance();
-                    self.make_token(TokenType::LessEqual)
-                }
-                _ => self.make_token(TokenType::Less),
-            },
-            "\"" => self.make_string(),
+            (Some('!'), Some('=')) => self.make_token(TokenKind::BangEqual),
+            (Some('!'), _) => self.make_token(TokenKind::Bang),
+            (Some('='), Some('=')) => self.make_token(TokenKind::EqualEqual),
+            (Some('='), _) => self.make_token(TokenKind::Equal),
+            (Some('<'), Some('=')) => self.make_token(TokenKind::LessEqual),
+            (Some('<'), _) => self.make_token(TokenKind::Less),
+            (Some('>'), Some('=')) => self.make_token(TokenKind::GreaterEqual),
+            (Some('>'), _) => self.make_token(TokenKind::Greater),
             _ => self.make_error_token("Unexpected character"),
         }
     }
 
-    fn make_identifier(&mut self) -> Token {
-        while self.peek().unwrap().is_alphabetic() || self.peek().unwrap().is_digit(10) {
-            self.advance()
+    fn make_identifier_or_keyword(&mut self) -> Token {
+        while let Some(c) = self.peek(self.current) {
+            if c.is_alphanumeric() || c == '_' {
+                self.current += 1;
+            } else {
+                break;
+            }
         }
 
-        // self.make_token(identifier_type())
-        self.make_token(self.choose_identifier_type())
-    }
+        let kind = match self.source.get(self.start..self.current) {
+            Some("and") => TokenKind::And,
+            Some("class") => TokenKind::Class,
+            Some("else") => TokenKind::Else,
+            Some("if") => TokenKind::If,
+            Some("nil") => TokenKind::Nil,
+            Some("or") => TokenKind::Or,
+            Some("print") => TokenKind::Print,
+            Some("super") => TokenKind::Super,
+            Some("var") => TokenKind::Var,
+            Some("while") => TokenKind::While,
+            Some("false") => TokenKind::False,
+            Some("for") => TokenKind::For,
+            Some("fun") => TokenKind::Fun,
+            Some("this") => TokenKind::This,
+            Some("true") => TokenKind::True,
+            _ => TokenKind::Identifier,
+        };
 
-    fn choose_identifier_type(&self) -> TokenType {
-        match &self.source[self.start..self.current] {
-            "and" => TokenType::And,
-            "class" => TokenType::Class,
-            "else" => TokenType::Else,
-            "if" => TokenType::If,
-            "nil" => TokenType::Nil,
-            "or" => TokenType::Or,
-            "print" => TokenType::Print,
-            "super" => TokenType::Super,
-            "var" => TokenType::Var,
-            "while" => TokenType::While,
-            "false" => TokenType::False,
-            "for" => TokenType::For,
-            "fun" => TokenType::Fun,
-            "this" => TokenType::This,
-            "true" => TokenType::True,
-            _ => TokenType::Identifier,
-        }
+        self.make_token(kind)
     }
 
     fn make_number(&mut self) -> Token {
-        while let Some(c) = self.peek() {
-            match c {
-                c if c.is_digit(10) => self.advance(),
-                _ => break,
+        while let Some(possible_digit) = self.peek(self.current) {
+            if possible_digit.is_ascii_digit() {
+                self.current += 1;
+            } else {
+                break;
             }
         }
 
-        if self.peek().unwrap() == '.' && self.peek_next().unwrap().is_digit(10) {
-            self.advance();
+        match (self.peek(self.current), self.peek(self.current + 1)) {
+            (Some('.'), Some(possible_digit)) if possible_digit.is_ascii_digit() => {
+                self.current += 1
+            }
+            _ => (),
         }
 
-        while let Some(c) = self.peek() {
-            match c {
-                c if c.is_digit(10) => self.advance(),
-                _ => break,
+        while let Some(possible_digit) = self.peek(self.current) {
+            if possible_digit.is_ascii_digit() {
+                self.current += 1;
+            } else {
+                break;
             }
         }
 
-        self.make_token(TokenType::Number)
+        self.make_token(TokenKind::Number)
     }
 
     fn make_string(&mut self) -> Token {
-        while let Some(c) = self.peek() {
-            if c == '\n' {
-                self.line += 1;
+        while let Some(character) = self.peek(self.current) {
+            match character {
+                '"' => break,
+                '\n' => self.line += 1,
+                _ => self.current += 1,
             }
-            self.advance();
         }
 
         if self.is_at_end() {
             return self.make_error_token("Unterminated string.");
         }
 
-        self.advance();
-        self.make_token(TokenType::String)
+        // NOTE: The closing quote.
+        self.current += 1;
+        self.make_token(TokenKind::String)
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(c) = self.peek() {
-            match c {
-                ' ' | '\r' | '\t' => self.advance(),
+        while let Some(character) = self.peek(self.current) {
+            match character {
+                '/' => self.skip_comments(),
+                ' ' | '\r' | '\t' => self.current += 1,
                 '\n' => {
                     self.line += 1;
-                    self.advance();
+                    self.current += 1;
                 }
-                '/' if self.peek_next().is_some() && self.peek_next().unwrap() == '/' => {
-                    while let Some(c) = self.peek() {
-                        if c == '\n' {
-                            return;
-                        } else {
-                            self.advance();
-                        }
-                    }
-                }
-                _ => return,
+                _ => break,
             }
         }
+
+        self.start = 0;
+        self.current = 0;
     }
 
-    fn advance(&mut self) {
-        self.current += 1;
-    }
-
-    fn peek(&self) -> Option<char> {
-        self.source.chars().nth(self.current)
-    }
-
-    fn peek_next(&self) -> Option<char> {
-        if self.source.chars().nth(self.current + 1).is_some() {
-            self.source.chars().nth(self.current + 1)
-        } else {
-            Some('\0')
+    fn skip_comments(&mut self) {
+        match (self.peek(self.current), self.peek(self.current + 1)) {
+            (Some('/'), Some('/')) => {
+                while let Some(character) = self.peek(self.current) {
+                    if character != '\n' {
+                        self.current += 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            _ => (),
         }
+    }
+
+    fn peek(&self, index: usize) -> Option<char> {
+        self.source.chars().nth(index)
     }
 
     fn is_at_end(&self) -> bool {
-        self.source.chars().nth(self.current as usize).is_none()
+        self.source.chars().nth(self.current).is_none()
     }
 
-    fn make_token(&self, kind: TokenType) -> Token {
-        Token::new(kind, &self.source[self.start..self.current], self.line)
+    fn make_token(&mut self, kind: TokenKind) -> Token {
+        let token = Token::new(
+            kind,
+            String::from_iter(self.source.drain(self.start..self.current)),
+            self.line,
+        );
+
+        self.start = 0;
+        self.current = 0;
+
+        token
     }
 
-    fn make_error_token<'a>(&'a self, message: &'a str) -> Token {
-        Token::new(TokenType::ERROR, message, self.line)
+    fn make_error_token(&self, message: &str) -> Token {
+        Token::new(TokenKind::ERROR, message.to_string(), self.line)
     }
 }

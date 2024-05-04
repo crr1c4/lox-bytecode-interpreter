@@ -1,22 +1,18 @@
 #[derive(Debug, PartialEq)]
-pub struct Token<'a> {
-    pub kind: TokenType,
-    pub source: &'a str,
+pub struct Token {
+    pub kind: TokenKind,
+    pub source: String,
     pub line: i32,
 }
 
-impl<'a> Token<'a> {
-    pub fn new(kind: TokenType, source: &'a str, line: i32) -> Self {
-        Token {
-            kind,
-            source,
-            line,
-        }
+impl Token {
+    pub fn new(kind: TokenKind, source: String, line: i32) -> Self {
+        Token { kind, source, line }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TokenType {
+pub enum TokenKind {
     LeftParen,
     RightParen,
     LeftBrace,
