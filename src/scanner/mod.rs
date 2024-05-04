@@ -14,13 +14,56 @@ pub struct Scanner {
     line: i32,
 }
 
-/* impl Iterator for Scanner {
+impl Iterator for Scanner {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        self.skip_whitespace();
+
+        self.start = self.current;
+
+        if self.is_at_end() {
+            // return self.make_token(TokenKind::EOF);
+            return None;
+        }
+
+        self.current += 1;
+
+        Some(
+            match (self.peek(self.current - 1), self.peek(self.current)) {
+                // Special cases
+                (Some('.'), Some(digit)) if digit.is_ascii_digit() => self.make_number(),
+                (Some('"'), _) => self.make_string(),
+                (Some(digit), _) if digit.is_ascii_digit() => self.make_number(),
+                (Some(character), _) if character.is_alphabetic() || character == '_' => {
+                    self.make_identifier_or_keyword()
+                }
+                // Single character
+                (Some('('), _) => self.make_token(TokenKind::LeftParen),
+                (Some(')'), _) => self.make_token(TokenKind::RightParen),
+                (Some('{'), _) => self.make_token(TokenKind::LeftBrace),
+                (Some('}'), _) => self.make_token(TokenKind::RightBrace),
+                (Some(';'), _) => self.make_token(TokenKind::Semicolon),
+                (Some(','), _) => self.make_token(TokenKind::Comma),
+                (Some('.'), _) => self.make_token(TokenKind::Dot),
+                (Some('-'), _) => self.make_token(TokenKind::Minus),
+                (Some('+'), _) => self.make_token(TokenKind::Plus),
+                (Some('/'), _) => self.make_token(TokenKind::Slash),
+                (Some('*'), _) => self.make_token(TokenKind::Star),
+                // Two characters match
+                (Some('!'), Some('=')) => self.make_token(TokenKind::BangEqual),
+                (Some('!'), _) => self.make_token(TokenKind::Bang),
+                (Some('='), Some('=')) => self.make_token(TokenKind::EqualEqual),
+                (Some('='), _) => self.make_token(TokenKind::Equal),
+                (Some('<'), Some('=')) => self.make_token(TokenKind::LessEqual),
+                (Some('<'), _) => self.make_token(TokenKind::Less),
+                (Some('>'), Some('=')) => self.make_token(TokenKind::GreaterEqual),
+                (Some('>'), _) => self.make_token(TokenKind::Greater),
+                _ => self.make_error_token("Unexpected character"),
+            },
+        )
     }
-} */
+}
 
 impl Scanner {
     pub fn new(source: impl Into<String>) -> Self {
@@ -29,50 +72,6 @@ impl Scanner {
             line: 1,
             start: 0,
             current: 0,
-        }
-    }
-
-    pub fn scan_token(&mut self) -> Token {
-        self.skip_whitespace();
-
-        self.start = self.current;
-
-        if self.is_at_end() {
-            return self.make_token(TokenKind::EOF);
-        }
-
-        self.current += 1;
-
-        match (self.peek(self.current - 1), self.peek(self.current)) {
-            // Special cases
-            (Some('.'), Some(digit)) if digit.is_ascii_digit() => self.make_number(),
-            (Some('"'), _) => self.make_string(),
-            (Some(digit), _) if digit.is_ascii_digit() => self.make_number(),
-            (Some(character), _) if character.is_alphabetic() || character == '_' => {
-                self.make_identifier_or_keyword()
-            }
-            // Single character
-            (Some('('), _) => self.make_token(TokenKind::LeftParen),
-            (Some(')'), _) => self.make_token(TokenKind::RightParen),
-            (Some('{'), _) => self.make_token(TokenKind::LeftBrace),
-            (Some('}'), _) => self.make_token(TokenKind::RightBrace),
-            (Some(';'), _) => self.make_token(TokenKind::Semicolon),
-            (Some(','), _) => self.make_token(TokenKind::Comma),
-            (Some('.'), _) => self.make_token(TokenKind::Dot),
-            (Some('-'), _) => self.make_token(TokenKind::Minus),
-            (Some('+'), _) => self.make_token(TokenKind::Plus),
-            (Some('/'), _) => self.make_token(TokenKind::Slash),
-            (Some('*'), _) => self.make_token(TokenKind::Star),
-            // Two characters match
-            (Some('!'), Some('=')) => self.make_token(TokenKind::BangEqual),
-            (Some('!'), _) => self.make_token(TokenKind::Bang),
-            (Some('='), Some('=')) => self.make_token(TokenKind::EqualEqual),
-            (Some('='), _) => self.make_token(TokenKind::Equal),
-            (Some('<'), Some('=')) => self.make_token(TokenKind::LessEqual),
-            (Some('<'), _) => self.make_token(TokenKind::Less),
-            (Some('>'), Some('=')) => self.make_token(TokenKind::GreaterEqual),
-            (Some('>'), _) => self.make_token(TokenKind::Greater),
-            _ => self.make_error_token("Unexpected character"),
         }
     }
 
@@ -165,6 +164,7 @@ impl Scanner {
             }
         }
 
+        self.source.drain(self.start..self.current);
         self.start = 0;
         self.current = 0;
     }
