@@ -1,7 +1,7 @@
-use crate::value::Value;
-
 #[cfg(test)]
 pub mod tests;
+
+use crate::value::Value;
 
 #[derive(Debug)]
 pub enum OperationCode {
@@ -38,5 +38,3 @@ impl Chunk {
         self.codes.len()
     }
 }
-
-

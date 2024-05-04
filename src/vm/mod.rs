@@ -1,10 +1,10 @@
+#[cfg(test)]
+pub mod tests;
+
 use crate::chunk::Chunk;
 use crate::chunk::OperationCode;
 use crate::debug::print_value;
 use crate::value::Value;
-
-#[cfg(test)]
-pub mod tests;
 
 pub struct VirtualMachine;
 
@@ -25,7 +25,7 @@ impl VirtualMachine {
 
         for op_code in chunk.codes {
             // NOTE: This is for debugging porpuses
-            println!("\t{:?}", stack);
+            // println!("\t{:?}", stack);
 
             match op_code {
                 OperationCode::Return => {
