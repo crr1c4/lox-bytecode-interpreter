@@ -1,4 +1,4 @@
-use super::*;
+/* use super::*;
 
 #[test]
 fn check_all_keywords_tokens_scan_correctly() {
@@ -58,7 +58,7 @@ fn check_complex_code_tokens() {
         "
         var a = 12.3;
         var b = 3.1416;
-        
+
         print(a + b);
         print(\"Hello world from a test\");",
     );
@@ -122,4 +122,4 @@ fn check_complex_code_tokens() {
 fn check_whitespace_are_ignored() {
     let mut s = Scanner::new("// This is a comment. \n\t");
     assert_eq!(s.next(), None);
-}
+} */

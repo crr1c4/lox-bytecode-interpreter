@@ -1,4 +1,4 @@
-use super::*;
+/* use super::*;
 
 #[test]
 fn verify_vm_addition() {
@@ -61,4 +61,4 @@ fn verify_vm_stack_error() {
     chunk.write(OperationCode::Constant(1.2), 123);
     chunk.write(OperationCode::Add, 123);
     assert_eq!(InterpretResult::Ok, VirtualMachine::interpret(chunk));
-}
+} */

@@ -1,17 +1,14 @@
-#[cfg(test)]
-pub mod tests;
 pub mod token;
 
 use token::*;
 
-// TODO: Check if EOF is necessary. I think it doesnt xd.
-// TODO: Implement Iterator trait
-
+#[derive(Debug)]
 pub struct Scanner {
     source: String,
     start: usize,
     current: usize,
-    line: i32,
+    line: u32,
+    eof_reached: bool,
 }
 
 impl Iterator for Scanner {
@@ -22,46 +19,46 @@ impl Iterator for Scanner {
 
         self.start = self.current;
 
-        if self.is_at_end() {
-            // return self.make_token(TokenKind::EOF);
+        if self.eof_reached {
             return None;
+        }
+
+        if self.is_at_end() {
+            self.eof_reached = true;
+            return Some(self.make_token(TokenKind::EOF));
         }
 
         self.current += 1;
 
-        Some(
-            match (self.peek(self.current - 1), self.peek(self.current)) {
-                // Special cases
-                (Some('.'), Some(digit)) if digit.is_ascii_digit() => self.make_number(),
-                (Some('"'), _) => self.make_string(),
-                (Some(digit), _) if digit.is_ascii_digit() => self.make_number(),
-                (Some(character), _) if character.is_alphabetic() || character == '_' => {
-                    self.make_identifier_or_keyword()
-                }
-                // Single character
-                (Some('('), _) => self.make_token(TokenKind::LeftParen),
-                (Some(')'), _) => self.make_token(TokenKind::RightParen),
-                (Some('{'), _) => self.make_token(TokenKind::LeftBrace),
-                (Some('}'), _) => self.make_token(TokenKind::RightBrace),
-                (Some(';'), _) => self.make_token(TokenKind::Semicolon),
-                (Some(','), _) => self.make_token(TokenKind::Comma),
-                (Some('.'), _) => self.make_token(TokenKind::Dot),
-                (Some('-'), _) => self.make_token(TokenKind::Minus),
-                (Some('+'), _) => self.make_token(TokenKind::Plus),
-                (Some('/'), _) => self.make_token(TokenKind::Slash),
-                (Some('*'), _) => self.make_token(TokenKind::Star),
-                // Two characters match
-                (Some('!'), Some('=')) => self.make_token(TokenKind::BangEqual),
-                (Some('!'), _) => self.make_token(TokenKind::Bang),
-                (Some('='), Some('=')) => self.make_token(TokenKind::EqualEqual),
-                (Some('='), _) => self.make_token(TokenKind::Equal),
-                (Some('<'), Some('=')) => self.make_token(TokenKind::LessEqual),
-                (Some('<'), _) => self.make_token(TokenKind::Less),
-                (Some('>'), Some('=')) => self.make_token(TokenKind::GreaterEqual),
-                (Some('>'), _) => self.make_token(TokenKind::Greater),
-                _ => self.make_error_token("Unexpected character"),
-            },
-        )
+        Some(match (self.peek(self.current - 1), self.peek(self.current)) {
+            // Special cases
+            (Some('.'), Some(digit)) if digit.is_ascii_digit() => self.make_number(),
+            (Some('"'), _) => self.make_string(),
+            (Some(digit), _) if digit.is_ascii_digit() => self.make_number(),
+            (Some(character), _) if character.is_alphabetic() || character == '_' => self.make_identifier_or_keyword(),
+            // Single character
+            (Some('('), _) => self.make_token(TokenKind::LeftParen),
+            (Some(')'), _) => self.make_token(TokenKind::RightParen),
+            (Some('{'), _) => self.make_token(TokenKind::LeftBrace),
+            (Some('}'), _) => self.make_token(TokenKind::RightBrace),
+            (Some(';'), _) => self.make_token(TokenKind::Semicolon),
+            (Some(','), _) => self.make_token(TokenKind::Comma),
+            (Some('.'), _) => self.make_token(TokenKind::Dot),
+            (Some('-'), _) => self.make_token(TokenKind::Minus),
+            (Some('+'), _) => self.make_token(TokenKind::Plus),
+            (Some('/'), _) => self.make_token(TokenKind::Slash),
+            (Some('*'), _) => self.make_token(TokenKind::Star),
+            // Two characters match
+            (Some('!'), Some('=')) => self.make_token(TokenKind::BangEqual),
+            (Some('!'), _) => self.make_token(TokenKind::Bang),
+            (Some('='), Some('=')) => self.make_token(TokenKind::EqualEqual),
+            (Some('='), _) => self.make_token(TokenKind::Equal),
+            (Some('<'), Some('=')) => self.make_token(TokenKind::LessEqual),
+            (Some('<'), _) => self.make_token(TokenKind::Less),
+            (Some('>'), Some('=')) => self.make_token(TokenKind::GreaterEqual),
+            (Some('>'), _) => self.make_token(TokenKind::Greater),
+            _ => self.make_error_token("Unexpected character"),
+        })
     }
 }
 
@@ -72,6 +69,7 @@ impl Scanner {
             line: 1,
             start: 0,
             current: 0,
+            eof_reached: false,
         }
     }
 
@@ -116,9 +114,7 @@ impl Scanner {
         }
 
         match (self.peek(self.current), self.peek(self.current + 1)) {
-            (Some('.'), Some(possible_digit)) if possible_digit.is_ascii_digit() => {
-                self.current += 1
-            }
+            (Some('.'), Some(possible_digit)) if possible_digit.is_ascii_digit() => self.current += 1,
             _ => (),
         }
 
@@ -152,13 +148,22 @@ impl Scanner {
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(character) = self.peek(self.current) {
-            match character {
-                '/' => self.skip_comments(),
-                ' ' | '\r' | '\t' => self.current += 1,
-                '\n' => {
+        while let (Some(a), Some(b)) = (self.peek(self.current), self.peek(self.current + 1)) {
+            match (a, b) {
+                ('/', '/') => {
+                    while let Some(c) = self.peek(self.current) {
+                        if c != '\n' && !self.is_at_end() {
+                            self.current += 1;
+                        } else {
+                            self.current += 1;
+                            break;
+                        }
+                    }
+                }
+                (' ', _) | ('\r', _) | ('\t', _) => self.current += 1,
+                ('\n', _) => {
                     self.line += 1;
-                    self.current += 1;
+                    self.current += 2;
                 }
                 _ => break,
             }
@@ -167,21 +172,6 @@ impl Scanner {
         self.source.drain(self.start..self.current);
         self.start = 0;
         self.current = 0;
-    }
-
-    fn skip_comments(&mut self) {
-        match (self.peek(self.current), self.peek(self.current + 1)) {
-            (Some('/'), Some('/')) => {
-                while let Some(character) = self.peek(self.current) {
-                    if character != '\n' {
-                        self.current += 1;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            _ => (),
-        }
     }
 
     fn peek(&self, index: usize) -> Option<char> {
@@ -193,11 +183,7 @@ impl Scanner {
     }
 
     fn make_token(&mut self, kind: TokenKind) -> Token {
-        let token = Token::new(
-            kind,
-            String::from_iter(self.source.drain(self.start..self.current)),
-            self.line,
-        );
+        let token = Token::new(kind, String::from_iter(self.source.drain(self.start..self.current)), self.line);
 
         self.start = 0;
         self.current = 0;

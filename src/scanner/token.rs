@@ -1,17 +1,20 @@
-#[derive(Debug, PartialEq)]
+use std::error::Error;
+use std::fmt::Display;
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub source: String,
-    pub line: i32,
+    pub line: u32,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, source: String, line: i32) -> Self {
+    pub fn new(kind: TokenKind, source: String, line: u32) -> Self {
         Token { kind, source, line }
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Hash, Eq, Clone, Copy)]
 pub enum TokenKind {
     LeftParen,
     RightParen,
@@ -55,5 +58,31 @@ pub enum TokenKind {
     Var,
     While,
     ERROR,
-    // EOF,
+    EOF,
+}
+
+#[derive(Debug)]
+pub struct TokenError<'a> {
+    token: &'a Token,
+    message: String,
+}
+
+impl<'a> Error for TokenError<'a> {}
+
+impl<'a> Display for TokenError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let location = match self.token.kind {
+            TokenKind::EOF => "at end",
+            TokenKind::ERROR => "",
+            _ => &format!("at '{}'", self.token.source),
+        };
+
+        writeln!(f, "[line {}] Error {}: {}", self.token.line, location, self.message)
+    }
+}
+
+impl<'a> TokenError<'a> {
+    pub fn new(token: &'a Token, message: impl Into<String>) -> Self {
+        Self { token, message: message.into() }
+    }
 }

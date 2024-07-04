@@ -1,9 +1,22 @@
-use crate::scanner::Scanner;
-// use crate::scanner::token::TokenKind;
+mod parser;
 
-pub fn compile(source: &String) {
-    let mut scanner = Scanner::new(source);
-    let mut line = -1;
+use crate::chunk::op_code::OperationCode;
+use crate::chunk::Chunk;
+use crate::compiler::parser::Parser;
+use crate::scanner::token::TokenKind;
+
+pub fn compile(chunk: &mut Chunk, source: &str) -> bool {
+    let mut parser = Parser::new(chunk, source);
+    parser.advance();
+    parser.expression();
+    parser.consume(TokenKind::EOF, "Expect end of expression");
+    parser.emit(OperationCode::Return);
+    !parser.had_error
+}
+
+/* pub fn compile(source: &str) {
+    let mut scanner = crate::scanner::Scanner::new(source);
+    let mut line = 0;
 
     while let Some(token) = scanner.next() {
         if token.line != line {
@@ -15,4 +28,4 @@ pub fn compile(source: &String) {
 
         println!("{:>2} '{}'", token.kind as usize, token.source);
     }
-}
+} */

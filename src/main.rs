@@ -1,18 +1,11 @@
-// TODO: Add tests
-// TODO: Finish scanner (check book because I need to refactor the code).
-
 pub mod chunk;
 pub mod compiler;
-pub mod debug;
 pub mod scanner;
 pub mod value;
 pub mod vm;
 
-// use crate::chunk::*;
-// use crate::debug::disassemble_chunk;
 use crate::vm::InterpretResult;
-// use crate::vm::VirtualMachine;
-use crate::compiler::compile;
+use crate::vm::VirtualMachine;
 
 use std::env::args;
 use std::fs::read_to_string;
@@ -26,7 +19,7 @@ fn main() {
         1 => repl(),
         2 => run_file(&args[1]),
         _ => {
-            eprintln!("Usage: rlox [path]");
+            eprintln!("Usage: lox [path]");
             exit(64);
         }
     };
@@ -38,14 +31,13 @@ fn repl() {
     loop {
         print!("> ");
         stdout().flush().unwrap();
-
         stdin().read_line(&mut line).expect("Failed to read line");
 
-        if line.trim().eq("") {
+        if line.trim().is_empty() {
             break;
         }
 
-        interpret(&line);
+        VirtualMachine::interpret(line.trim());
         line.clear();
     }
 }
@@ -56,16 +48,9 @@ fn run_file(path: &String) {
         exit(74);
     };
 
-    let result = interpret(&source);
-    if result == InterpretResult::CompileError {
-        exit(65);
-    }
-    if result == InterpretResult::RuntimeError {
-        exit(70);
-    }
-}
-
-fn interpret(source: &String) -> InterpretResult {
-    compile(source);
-    InterpretResult::Ok
+    match VirtualMachine::interpret(&source) {
+        InterpretResult::CompileError => exit(65),
+        InterpretResult::RuntimeError => exit(70),
+        InterpretResult::Ok => (),
+    };
 }
