@@ -35,7 +35,7 @@ impl Debug for Chunk {
             writeln!(f, "{:?}", code)?;
         }
 
-        write!(f, "")
+        write!(f, "--- --- --- --- --- --- ---")
     }
 }
 

@@ -77,7 +77,7 @@ impl<'a> Display for TokenError<'a> {
             _ => &format!("at '{}'", self.token.source),
         };
 
-        writeln!(f, "[line {}] Error {}: {}", self.token.line, location, self.message)
+        write!(f, "[line {}] Error {}: {}", self.token.line, location, self.message)
     }
 }
 

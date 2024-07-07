@@ -5,10 +5,17 @@ pub enum OperationCode {
     Return,
     Constant(Value),
     Negate,
+    Not,
+    Nil,
+    True,
+    False,
     Add,
     Substract,
     Multiply,
     Divide,
+    Equal,
+    Greater,
+    Less
 }
 
 impl Debug for OperationCode {
@@ -21,6 +28,13 @@ impl Debug for OperationCode {
             OperationCode::Multiply => "OP_MULTIPLY",
             OperationCode::Divide => "OP_DIVIDE",
             OperationCode::Negate => "OP_NEGATE",
+            OperationCode::Nil => "OP_NIL",
+            OperationCode::True => "OP_TRUE",
+            OperationCode::False => "OP_FALSE",
+            OperationCode::Not => "OP_NOT",
+            OperationCode::Equal => "EP_EQUAL",
+            OperationCode::Greater => "EP_GREATER",
+            OperationCode::Less => "EP_LESS"
         };
 
         write!(f, "{}", output)

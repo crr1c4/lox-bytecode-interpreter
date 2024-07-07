@@ -1,5 +1,4 @@
 // WARNING: Check unwrap() lines.
-// BUG: Check debug chunk line bug.
 
 use crate::chunk::op_code::OperationCode;
 use crate::chunk::Chunk;
@@ -49,6 +48,7 @@ enum ParseFn {
     Unary,
     Binary,
     Number,
+    Literal,
 }
 
 #[derive(Debug)]
@@ -89,31 +89,31 @@ impl<'a> Parser<'a> {
             (TokenKind::Semicolon, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Slash, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Factor)),
             (TokenKind::Star, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Factor)),
-            (TokenKind::Bang, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::BangEqual, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::Bang, ParseRule::new(Some(ParseFn::Unary), None, Precedence::None)),
+            (TokenKind::BangEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Equality)),
             (TokenKind::Equal, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::EqualEqual, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::Greater, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::GreaterEqual, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::Less, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::LessEqual, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::EqualEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Equality)),
+            (TokenKind::Greater, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
+            (TokenKind::GreaterEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
+            (TokenKind::Less, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
+            (TokenKind::LessEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
             (TokenKind::Identifier, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::String, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Number, ParseRule::new(Some(ParseFn::Number), None, Precedence::None)),
             (TokenKind::And, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Class, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Else, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::False, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::False, ParseRule::new(Some(ParseFn::Literal), None, Precedence::None)),
             (TokenKind::For, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Fun, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::If, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::Nil, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::Nil, ParseRule::new(Some(ParseFn::Literal), None, Precedence::None)),
             (TokenKind::Or, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Print, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Return, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Super, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::This, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::True, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::True, ParseRule::new(Some(ParseFn::Literal), None, Precedence::None)),
             (TokenKind::Var, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::While, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::ERROR, ParseRule::new(None, None, Precedence::None)),
@@ -184,6 +184,7 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Binary) => self.binary(),
                 Some(ParseFn::Number) => self.number(),
                 Some(ParseFn::Grouping) => self.grouping(),
+                Some(ParseFn::Literal) => self.literal(),
                 None => {
                     self.error_at(token.clone(), "Expect expression");
                     return;
@@ -203,6 +204,7 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Binary) => self.binary(),
                 Some(ParseFn::Number) => self.number(),
                 Some(ParseFn::Grouping) => self.grouping(),
+                Some(ParseFn::Literal) => self.literal(),
                 None => (),
             }
         }
@@ -226,8 +228,10 @@ impl<'a> Parser<'a> {
             let operator_kind = token.kind;
             self.parse_precedence(Precedence::Unary);
 
-            if operator_kind == TokenKind::Minus {
-                self.emit(OperationCode::Negate);
+            match operator_kind {
+                TokenKind::Minus => self.emit(OperationCode::Negate),
+                TokenKind::Bang => self.emit(OperationCode::Not),
+                _ => unreachable!(),
             }
         }
     }
@@ -243,6 +247,33 @@ impl<'a> Parser<'a> {
                 TokenKind::Minus => self.emit(OperationCode::Substract),
                 TokenKind::Star => self.emit(OperationCode::Multiply),
                 TokenKind::Slash => self.emit(OperationCode::Divide),
+
+                TokenKind::EqualEqual => self.emit(OperationCode::Equal),
+                TokenKind::Greater => self.emit(OperationCode::Greater),
+                TokenKind::Less => self.emit(OperationCode::Less),
+                TokenKind::BangEqual => {
+                    self.emit(OperationCode::Equal);
+                    self.emit(OperationCode::Not);
+                }
+                TokenKind::LessEqual => {
+                    self.emit(OperationCode::Greater);
+                    self.emit(OperationCode::Not);
+                }
+                TokenKind::GreaterEqual => {
+                    self.emit(OperationCode::Less);
+                    self.emit(OperationCode::Not);
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn literal(&mut self) {
+        if let Some(token) = &self.previous_token {
+            match token.kind {
+                TokenKind::Nil => self.emit(OperationCode::Nil),
+                TokenKind::False => self.emit(OperationCode::False),
+                TokenKind::True => self.emit(OperationCode::True),
                 _ => unreachable!(),
             }
         }

@@ -36,8 +36,8 @@ impl VirtualMachine {
                     return InterpretResult::Ok;
                 }
                 Constant(constant) => stack.push(*constant),
-                Add | Substract | Multiply | Divide => match VirtualMachine::binary_operation(code, *line, &mut stack) {
-                    InterpretResult::RuntimeError => return InterpretResult::RuntimeError,
+                Add | Substract | Multiply | Divide => match VirtualMachine::binary_operation(code, &mut stack) {
+                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
                     _ => (),
                 },
                 Negate => match stack.pop() {
@@ -47,21 +47,38 @@ impl VirtualMachine {
                     }
                     _ => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
                 },
+                Nil => stack.push(Value::Nil),
+                True => stack.push(Value::Bool(true)),
+                False => stack.push(Value::Bool(false)),
+                Not => {
+                    let value = stack.pop().unwrap();
+                    let value = VirtualMachine::is_falsey(value);
+                    stack.push(Value::Bool(value));
+                }
+                Equal => match VirtualMachine::values_equal(&mut stack) {
+                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
+                    _ => (),
+                }
+                Greater | Less => match VirtualMachine::binary_boolean_operation(code, &mut stack) {
+                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
+                    _ => (),
+                },
+
             };
         }
 
         InterpretResult::Ok
     }
 
-    fn binary_operation(code: &OperationCode, line: u32, stack: &mut Vec<Value>) -> InterpretResult {
+    fn binary_operation(code: &OperationCode, stack: &mut Vec<Value>) -> InterpretResult {
         let b = match stack.pop() {
             Some(Value::Number(number)) => number,
-            _ => return VirtualMachine::throw_runtime_error("Operand must be a number", line),
+            _ => return InterpretResult::RuntimeError,
         };
 
         let a = match stack.pop() {
             Some(Value::Number(number)) => number,
-            _ => return VirtualMachine::throw_runtime_error("Operand must be a number", line),
+            _ => return InterpretResult::RuntimeError,
         };
 
         let result = match code {
@@ -77,9 +94,60 @@ impl VirtualMachine {
         InterpretResult::Ok
     }
 
-    // TODO: Check args
+    fn binary_boolean_operation(code: &OperationCode, stack: &mut Vec<Value>) -> InterpretResult {
+        let b = match stack.pop() {
+            Some(Value::Number(number)) => number,
+            _ => return InterpretResult::RuntimeError,
+        };
+
+        let a = match stack.pop() {
+            Some(Value::Number(number)) => number,
+            _ => return InterpretResult::RuntimeError,
+        };
+
+        let result = match code {
+            Less => a < b,
+            Greater => a > b,
+            _ => unreachable!(),
+        };
+
+        stack.push(Value::Bool(result));
+
+        InterpretResult::Ok
+    }
+
     fn throw_runtime_error(message: &str, line: u32) -> InterpretResult {
         eprintln!("{} [line {}] in script.", message, line);
         InterpretResult::RuntimeError
+    }
+
+    fn is_falsey(value: Value) -> bool {
+        match value {
+            Value::Nil | Value::Bool(_) => true,
+            Value::Number(_) => false,
+        }
+    }
+
+    fn values_equal(stack: &mut Vec<Value>) -> InterpretResult {
+        let b = match stack.pop() {
+            Some(value) => value,
+            _ => return InterpretResult::RuntimeError,
+        };
+
+        let a = match stack.pop() {
+            Some(value) => value,
+            _ => return InterpretResult::RuntimeError,
+        };
+
+        let result = match (a, b) {
+            (Value::Nil, Value::Nil) => true,
+            (Value::Number(x), Value::Number(y)) => x == y,
+            (Value::Bool(x), Value::Bool(y)) => x == y,
+            (_, _) => false,
+        };
+
+        stack.push(Value::Bool(result));
+
+        InterpretResult::Ok
     }
 }
