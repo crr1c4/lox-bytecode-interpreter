@@ -183,6 +183,11 @@ impl Scanner {
     }
 
     fn make_token(&mut self, kind: TokenKind) -> Token {
+        match kind {
+            TokenKind::BangEqual | TokenKind::EqualEqual | TokenKind::LessEqual | TokenKind::GreaterEqual => self.current += 1,
+            _ => (),
+        }
+
         let token = Token::new(kind, String::from_iter(self.source.drain(self.start..self.current)), self.line);
 
         self.start = 0;
