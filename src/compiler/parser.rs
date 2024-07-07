@@ -5,6 +5,7 @@ use crate::chunk::op_code::OperationCode;
 use crate::chunk::Chunk;
 use crate::scanner::token::*;
 use crate::scanner::Scanner;
+use crate::value::Value;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug)]
@@ -210,7 +211,7 @@ impl<'a> Parser<'a> {
     fn number(&mut self) {
         if let Some(token) = &self.previous_token {
             let value = token.source.parse::<f64>().unwrap();
-            let code = OperationCode::Constant(value);
+            let code = OperationCode::Constant(Value::Number(value));
             self.emit(code);
         }
     }
