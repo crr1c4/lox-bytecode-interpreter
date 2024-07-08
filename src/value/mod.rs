@@ -1,12 +1,14 @@
+pub mod object;
+
 use std::fmt::Display;
+use crate::value::object::Object;
 
-// pub type Value = f64;
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub enum Value {
     Bool(bool),
     Nil,
-    Number(f64)
+    Number(f64),
+    Object(Object)
 }
 
 impl Display for Value {
@@ -14,7 +16,8 @@ impl Display for Value {
         let value = match self {
             Value::Number(number) => format!("{number}"),
             Value::Bool(boolean) => format!("{boolean}"),
-            Value::Nil => format!("Nil")
+            Value::Nil => format!("Nil"),
+            Value::Object(Object::String(value)) => format!("{value}") 
         };
 
         write!(f, "{}", value)

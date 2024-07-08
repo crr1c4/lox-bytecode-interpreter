@@ -1,6 +1,7 @@
 use crate::chunk::op_code::OperationCode::{self, *};
 use crate::chunk::Chunk;
 use crate::compiler::compile;
+use crate::value::object::Object;
 use crate::value::Value;
 
 pub struct VirtualMachine;
@@ -35,9 +36,18 @@ impl VirtualMachine {
                     println!("{}", stack.pop().unwrap());
                     return InterpretResult::Ok;
                 }
-                Constant(constant) => stack.push(*constant),
-                Add | Substract | Multiply | Divide => match VirtualMachine::binary_operation(code, &mut stack) {
-                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
+                Constant(constant) => stack.push(constant.clone()),
+                Add => match (stack.pop(), stack.pop()) {
+                    (Some(Value::Number(b)), Some(Value::Number(a))) => stack.push(Value::Number(a + b)),
+                    (Some(Value::Object(b)), Some(Value::Object(a))) => match VirtualMachine::concatenate(a, b, &mut stack) {
+                        InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operands must be a number or strings", *line),
+                        _ => (),
+                    },
+                    (_, _) => (),
+                },
+
+                Substract | Multiply | Divide => match VirtualMachine::binary_operation(&mut stack, code) {
+                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operands must be a number", *line),
                     _ => (),
                 },
                 Negate => match stack.pop() {
@@ -58,31 +68,25 @@ impl VirtualMachine {
                 Equal => match VirtualMachine::values_equal(&mut stack) {
                     InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
                     _ => (),
-                }
+                },
                 Greater | Less => match VirtualMachine::binary_boolean_operation(code, &mut stack) {
                     InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
                     _ => (),
                 },
-
             };
         }
 
         InterpretResult::Ok
     }
 
-    fn binary_operation(code: &OperationCode, stack: &mut Vec<Value>) -> InterpretResult {
-        let b = match stack.pop() {
-            Some(Value::Number(number)) => number,
-            _ => return InterpretResult::RuntimeError,
-        };
-
-        let a = match stack.pop() {
-            Some(Value::Number(number)) => number,
+    fn binary_operation(stack: &mut Vec<Value>, code: &OperationCode) -> InterpretResult {
+        let (b, a) = match (stack.pop(), stack.pop()) {
+            (Some(Value::Number(b)), Some(Value::Number(a))) => (b, a),
             _ => return InterpretResult::RuntimeError,
         };
 
         let result = match code {
-            Add => a + b,
+            // Add => a + b,
             Substract => a - b,
             Multiply => a * b,
             Divide => a / b,
@@ -90,6 +94,21 @@ impl VirtualMachine {
         };
 
         stack.push(Value::Number(result));
+
+        InterpretResult::Ok
+    }
+
+    fn concatenate(a: Object, b: Object, stack: &mut Vec<Value>) -> InterpretResult {
+        let result = match (a, b) {
+            (Object::String(a), Object::String(b)) => {
+                let mut result = a.clone();
+                result.push_str(&b);
+                result
+            }
+        };
+
+        let result = Object::String(result);
+        stack.push(Value::Object(result));
 
         InterpretResult::Ok
     }
@@ -125,6 +144,7 @@ impl VirtualMachine {
         match value {
             Value::Nil | Value::Bool(_) => true,
             Value::Number(_) => false,
+            _ => unreachable!()
         }
     }
 
@@ -143,6 +163,7 @@ impl VirtualMachine {
             (Value::Nil, Value::Nil) => true,
             (Value::Number(x), Value::Number(y)) => x == y,
             (Value::Bool(x), Value::Bool(y)) => x == y,
+            (Value::Object(Object::String(x)), Value::Object(Object::String(y))) => x.len() == y.len() && x.eq(&y),
             (_, _) => false,
         };
 

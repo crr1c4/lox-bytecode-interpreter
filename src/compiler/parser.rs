@@ -1,10 +1,11 @@
-// WARNING: Check unwrap() lines.
+// TODO: Check unwrap() lines.
 
 use crate::chunk::op_code::OperationCode;
 use crate::chunk::Chunk;
 use crate::scanner::token::*;
 use crate::scanner::Scanner;
 use crate::value::Value;
+use crate::value::object::*;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug)]
@@ -49,6 +50,7 @@ enum ParseFn {
     Binary,
     Number,
     Literal,
+    String
 }
 
 #[derive(Debug)]
@@ -98,7 +100,7 @@ impl<'a> Parser<'a> {
             (TokenKind::Less, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
             (TokenKind::LessEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
             (TokenKind::Identifier, ParseRule::new(None, None, Precedence::None)),
-            (TokenKind::String, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::String, ParseRule::new(Some(ParseFn::String), None, Precedence::None)),
             (TokenKind::Number, ParseRule::new(Some(ParseFn::Number), None, Precedence::None)),
             (TokenKind::And, ParseRule::new(None, None, Precedence::None)),
             (TokenKind::Class, ParseRule::new(None, None, Precedence::None)),
@@ -185,6 +187,7 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Number) => self.number(),
                 Some(ParseFn::Grouping) => self.grouping(),
                 Some(ParseFn::Literal) => self.literal(),
+                Some(ParseFn::String) => self.string(),
                 None => {
                     self.error_at(token.clone(), "Expect expression");
                     return;
@@ -205,6 +208,7 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Number) => self.number(),
                 Some(ParseFn::Grouping) => self.grouping(),
                 Some(ParseFn::Literal) => self.literal(),
+                Some(ParseFn::String) => self.string(),
                 None => (),
             }
         }
@@ -276,6 +280,15 @@ impl<'a> Parser<'a> {
                 TokenKind::True => self.emit(OperationCode::True),
                 _ => unreachable!(),
             }
+        }
+    }
+
+    fn string(&mut self) {
+        if let Some(token) = &self.previous_token {
+            let value = token.source.get(1..token.source.len() - 1);
+            let value = String::from_iter(value);
+            let value = Value::Object(Object::String(value));
+            self.emit(OperationCode::Constant(value));
         }
     }
 }

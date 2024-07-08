@@ -1,8 +1,8 @@
-pub mod chunk;
-pub mod compiler;
-pub mod scanner;
-pub mod value;
-pub mod vm;
+mod chunk;
+mod compiler;
+mod scanner;
+mod value;
+mod vm;
 
 use crate::vm::InterpretResult;
 use crate::vm::VirtualMachine;
