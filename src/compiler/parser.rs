@@ -1,13 +1,14 @@
 // TODO: Check unwrap() lines.
+// BUG: Primitive expressions cause loops.
 
-use crate::chunk::op_code::OperationCode;
+use crate::chunk::op_code::OpCode;
 use crate::chunk::Chunk;
 use crate::scanner::token::*;
 use crate::scanner::Scanner;
 use crate::value::Value;
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
     Assignment,
@@ -49,7 +50,8 @@ enum ParseFn {
     Binary,
     Number,
     Literal,
-    String
+    String,
+    Variable,
 }
 
 #[derive(Debug)]
@@ -98,7 +100,7 @@ impl<'a> Parser<'a> {
             (TokenKind::GreaterEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
             (TokenKind::Less, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
             (TokenKind::LessEqual, ParseRule::new(None, Some(ParseFn::Binary), Precedence::Comparison)),
-            (TokenKind::Identifier, ParseRule::new(None, None, Precedence::None)),
+            (TokenKind::Identifier, ParseRule::new(Some(ParseFn::Variable), None, Precedence::None)),
             (TokenKind::String, ParseRule::new(Some(ParseFn::String), None, Precedence::None)),
             (TokenKind::Number, ParseRule::new(Some(ParseFn::Number), None, Precedence::None)),
             (TokenKind::And, ParseRule::new(None, None, Precedence::None)),
@@ -166,7 +168,7 @@ impl<'a> Parser<'a> {
         self.had_error = true;
     }
 
-    pub fn emit(&mut self, code: OperationCode) {
+    pub fn emit(&mut self, code: OpCode) {
         if let Some(token) = &self.current_token {
             self.compiling_chunk.write(code, token.line);
         }
@@ -187,8 +189,9 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Grouping) => self.grouping(),
                 Some(ParseFn::Literal) => self.literal(),
                 Some(ParseFn::String) => self.string(),
+                Some(ParseFn::Variable) => self.variable(),
                 None => {
-                    self.error_at(token.clone(), "Expect expression");
+                    self.error_at(token.clone(), "Expect expression.");
                     return;
                 }
             }
@@ -208,6 +211,7 @@ impl<'a> Parser<'a> {
                 Some(ParseFn::Grouping) => self.grouping(),
                 Some(ParseFn::Literal) => self.literal(),
                 Some(ParseFn::String) => self.string(),
+                Some(ParseFn::Variable) => self.variable(),
                 None => (),
             }
         }
@@ -216,7 +220,7 @@ impl<'a> Parser<'a> {
     fn number(&mut self) {
         if let Some(token) = &self.previous_token {
             let value = token.source.parse::<f64>().unwrap();
-            let code = OperationCode::Constant(Value::Number(value));
+            let code = OpCode::Constant(Value::Number(value));
             self.emit(code);
         }
     }
@@ -232,8 +236,8 @@ impl<'a> Parser<'a> {
             self.parse_precedence(Precedence::Unary);
 
             match operator_kind {
-                TokenKind::Minus => self.emit(OperationCode::Negate),
-                TokenKind::Bang => self.emit(OperationCode::Not),
+                TokenKind::Minus => self.emit(OpCode::Negate),
+                TokenKind::Bang => self.emit(OpCode::Not),
                 _ => unreachable!(),
             }
         }
@@ -246,25 +250,25 @@ impl<'a> Parser<'a> {
             self.parse_precedence(Precedence::from(rule.precedence as u32 + 1));
 
             match operator_kind {
-                TokenKind::Plus => self.emit(OperationCode::Add),
-                TokenKind::Minus => self.emit(OperationCode::Substract),
-                TokenKind::Star => self.emit(OperationCode::Multiply),
-                TokenKind::Slash => self.emit(OperationCode::Divide),
+                TokenKind::Plus => self.emit(OpCode::Add),
+                TokenKind::Minus => self.emit(OpCode::Substract),
+                TokenKind::Star => self.emit(OpCode::Multiply),
+                TokenKind::Slash => self.emit(OpCode::Divide),
 
-                TokenKind::EqualEqual => self.emit(OperationCode::Equal),
-                TokenKind::Greater => self.emit(OperationCode::Greater),
-                TokenKind::Less => self.emit(OperationCode::Less),
+                TokenKind::EqualEqual => self.emit(OpCode::Equal),
+                TokenKind::Greater => self.emit(OpCode::Greater),
+                TokenKind::Less => self.emit(OpCode::Less),
                 TokenKind::BangEqual => {
-                    self.emit(OperationCode::Equal);
-                    self.emit(OperationCode::Not);
+                    self.emit(OpCode::Equal);
+                    self.emit(OpCode::Not);
                 }
                 TokenKind::LessEqual => {
-                    self.emit(OperationCode::Greater);
-                    self.emit(OperationCode::Not);
+                    self.emit(OpCode::Greater);
+                    self.emit(OpCode::Not);
                 }
                 TokenKind::GreaterEqual => {
-                    self.emit(OperationCode::Less);
-                    self.emit(OperationCode::Not);
+                    self.emit(OpCode::Less);
+                    self.emit(OpCode::Not);
                 }
                 _ => unreachable!(),
             }
@@ -274,9 +278,9 @@ impl<'a> Parser<'a> {
     fn literal(&mut self) {
         if let Some(token) = &self.previous_token {
             match token.kind {
-                TokenKind::Nil => self.emit(OperationCode::Nil),
-                TokenKind::False => self.emit(OperationCode::False),
-                TokenKind::True => self.emit(OperationCode::True),
+                TokenKind::Nil => self.emit(OpCode::Nil),
+                TokenKind::False => self.emit(OpCode::False),
+                TokenKind::True => self.emit(OpCode::True),
                 _ => unreachable!(),
             }
         }
@@ -287,7 +291,129 @@ impl<'a> Parser<'a> {
             let value = token.source.get(1..token.source.len() - 1);
             let value = String::from_iter(value);
             let value = Value::from(value);
-            self.emit(OperationCode::Constant(value));
+            self.emit(OpCode::Constant(value));
         }
+    }
+
+    fn variable(&mut self) {
+        self.named_variable();
+    }
+
+    fn named_variable(&mut self) {
+        let arg = self.identifier_constant();
+
+        if self.match_token(TokenKind::Equal) {
+            self.expression();
+            self.emit(OpCode::SetGlobal);
+            self.emit(arg);
+        } else {
+            self.emit(OpCode::GetGlobal);
+            self.emit(arg);
+        }
+    }
+
+    // ==================== Expressions and statements. ===================================0
+
+    pub fn match_token(&mut self, kind: TokenKind) -> bool {
+        if !self.check(kind) {
+            return false;
+        }
+
+        self.advance();
+        true
+    }
+
+    fn check(&self, kind: TokenKind) -> bool {
+        if let Some(token) = &self.current_token {
+            return token.kind == kind;
+        }
+
+        false
+    }
+
+    pub fn declaration(&mut self) {
+        if self.match_token(TokenKind::Var) {
+            self.var_declaration();
+        } else {
+            self.statement();
+        }
+
+        if self.panic_mode {
+            self.synchronize();
+        }
+    }
+
+    fn var_declaration(&mut self) {
+        let global = self.parse_variable("Expect variable name.");
+
+        if self.match_token(TokenKind::Equal) {
+            self.expression();
+        } else {
+            self.emit(OpCode::Nil);
+        }
+
+        self.consume(TokenKind::Semicolon, "Expect ',' after variable declaration.");
+        self.define_variable(global);
+    }
+
+    fn define_variable(&mut self, global: OpCode) {
+        self.emit(OpCode::DefineGlobal);
+        self.emit(global);
+    }
+
+    fn parse_variable(&mut self, message: &str) -> OpCode {
+        self.consume(TokenKind::Identifier, message);
+        self.identifier_constant()
+    }
+
+    fn identifier_constant(&self) -> OpCode {
+        if let Some(token) = &self.previous_token {
+            OpCode::Constant(Value::Object(Box::new(token.source.clone())))
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn synchronize(&mut self) {
+        self.panic_mode = false;
+
+        while let Some(token) = &self.current_token {
+            if token.kind == TokenKind::EOF {
+                return;
+            }
+
+            if let Some(previous) = &self.previous_token {
+                if previous.kind == TokenKind::Semicolon {
+                    return;
+                }
+            }
+
+            match token.kind {
+                TokenKind::Class | TokenKind::Fun | TokenKind::Var | TokenKind::For | TokenKind::If | TokenKind::While | TokenKind::Print | TokenKind::Return => return,
+                _ => (),
+            }
+
+            self.advance();
+        }
+    }
+
+    fn statement(&mut self) {
+        if self.match_token(TokenKind::Print) {
+            self.print_statement();
+        } else {
+            self.expression_statement();
+        }
+    }
+
+    fn expression_statement(&mut self) {
+        self.expression();
+        self.consume(TokenKind::Semicolon, "Expect ';' after expression");
+        self.emit(OpCode::Pop);
+    }
+
+    fn print_statement(&mut self) {
+        self.expression();
+        self.consume(TokenKind::Semicolon, "Expect ';' after value.");
+        self.emit(OpCode::Print)
     }
 }

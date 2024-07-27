@@ -1,17 +1,17 @@
 pub mod op_code;
 
-use op_code::OperationCode;
+use op_code::OpCode;
 use std::fmt::Debug;
 use std::ops::Deref;
 
 #[derive(Default)]
 pub struct Chunk {
     // NOTE: u32 field in the tuple refers to the line of the operation code.
-    pub codes: Vec<(OperationCode, u32)>,
+    pub codes: Vec<(OpCode, u32)>,
 }
 
 impl Deref for Chunk {
-    type Target = Vec<(OperationCode, u32)>;
+    type Target = Vec<(OpCode, u32)>;
 
     fn deref(&self) -> &Self::Target {
         &self.codes
@@ -44,7 +44,7 @@ impl Chunk {
         Self::default()
     }
 
-    pub fn write(&mut self, code: OperationCode, line: u32) {
+    pub fn write(&mut self, code: OpCode, line: u32) {
         self.codes.push((code, line));
     }
 }

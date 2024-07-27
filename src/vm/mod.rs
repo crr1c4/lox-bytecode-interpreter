@@ -1,4 +1,6 @@
-use crate::chunk::op_code::OperationCode::{self, *};
+use std::collections::HashMap;
+
+use crate::chunk::op_code::OpCode::{self, *};
 use crate::chunk::Chunk;
 use crate::compiler::compile;
 use crate::value::object::Object;
@@ -29,13 +31,11 @@ impl VirtualMachine {
 
     fn run(chunk: Chunk) -> InterpretResult {
         let mut stack: Vec<Value> = vec![];
+        let mut globals: HashMap<String, Value> = HashMap::new();
 
         for (code, line) in chunk.codes.iter() {
             match code {
-                Return => {
-                    println!("{}", stack.pop().unwrap());
-                    return InterpretResult::Ok;
-                }
+                Return => return InterpretResult::Ok,
                 Constant(constant) => stack.push(constant.clone()),
                 Add => match (stack.pop(), stack.pop()) {
                     (Some(Value::Number(b)), Some(Value::Number(a))) => stack.push(Value::Number(a + b)),
@@ -73,13 +73,40 @@ impl VirtualMachine {
                     InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
                     _ => (),
                 },
+                Print => {
+                    if let Some(value) = stack.pop() {
+                        println!("{value}")
+                    }
+                }
+                Pop => {
+                    stack.pop();
+                }
+                DefineGlobal => {
+                    // WARNING: Check this
+                    if let Some(name) = stack.last() {
+                        if let Value::Object(name) = name {
+                            let name = name.to_string();
+
+                            if let Some(value) = stack.pop() {
+                                globals.insert(name, value);
+                            }
+                        }
+                    }
+                },
+                GetGlobal => {
+                    todo!()
+                }
+
+                SetGlobal => {
+                    todo!()
+                }
             };
         }
 
         InterpretResult::Ok
     }
 
-    fn binary_operation(stack: &mut Vec<Value>, code: &OperationCode) -> InterpretResult {
+    fn binary_operation(stack: &mut Vec<Value>, code: &OpCode) -> InterpretResult {
         let (b, a) = match (stack.pop(), stack.pop()) {
             (Some(Value::Number(b)), Some(Value::Number(a))) => (b, a),
             _ => return InterpretResult::RuntimeError,
@@ -109,7 +136,7 @@ impl VirtualMachine {
         InterpretResult::Ok
     }
 
-    fn binary_boolean_operation(code: &OperationCode, stack: &mut Vec<Value>) -> InterpretResult {
+    fn binary_boolean_operation(code: &OpCode, stack: &mut Vec<Value>) -> InterpretResult {
         let b = match stack.pop() {
             Some(Value::Number(number)) => number,
             _ => return InterpretResult::RuntimeError,
