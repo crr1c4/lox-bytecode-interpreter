@@ -1,14 +1,36 @@
+// BUG: Add error messages for Object
+// TODO: Add a linked list for Object values (page 352)
+
 pub mod object;
 
-use std::fmt::Display;
 use crate::value::object::Object;
+use std::fmt::Display;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum Value {
     Bool(bool),
+    #[default]
     Nil,
     Number(f64),
-    Object(Object)
+    Object(Box<dyn Object>),
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Self::Number(value)
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Self::Object(Box::new(value))
+    }
 }
 
 impl Display for Value {
@@ -17,7 +39,7 @@ impl Display for Value {
             Value::Number(number) => format!("{number}"),
             Value::Bool(boolean) => format!("{boolean}"),
             Value::Nil => format!("Nil"),
-            Value::Object(Object::String(value)) => format!("{value}") 
+            Value::Object(value) => format!("{value}"),
         };
 
         write!(f, "{}", value)

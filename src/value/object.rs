@@ -1,7 +1,17 @@
-#[derive(Clone)]
-pub enum Object {
-    String(String),
+use std::fmt::Display;
+
+pub trait Object: Display {
+    fn clone_object(&self) -> Box<dyn Object>;
 }
 
-// BUG: Add error messages for Object
-// TODO: Add a linked list for Object values (page 352)
+impl Object for String {
+    fn clone_object(&self) -> Box<dyn Object> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Object> {
+    fn clone(&self) -> Self {
+        self.clone_object()
+    }
+}

@@ -98,17 +98,13 @@ impl VirtualMachine {
         InterpretResult::Ok
     }
 
-    fn concatenate(a: Object, b: Object, stack: &mut Vec<Value>) -> InterpretResult {
-        let result = match (a, b) {
-            (Object::String(a), Object::String(b)) => {
-                let mut result = a.clone();
-                result.push_str(&b);
-                result
-            }
-        };
+    fn concatenate(a: Box<dyn Object>, b: Box<dyn Object>, stack: &mut Vec<Value>) -> InterpretResult {
+        let mut a = a.to_string();
+        let b = b.to_string();
 
-        let result = Object::String(result);
-        stack.push(Value::Object(result));
+        a.push_str(&b);
+
+        stack.push(Value::Object(Box::new(a)));
 
         InterpretResult::Ok
     }
@@ -144,7 +140,7 @@ impl VirtualMachine {
         match value {
             Value::Nil | Value::Bool(_) => true,
             Value::Number(_) => false,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -163,7 +159,12 @@ impl VirtualMachine {
             (Value::Nil, Value::Nil) => true,
             (Value::Number(x), Value::Number(y)) => x == y,
             (Value::Bool(x), Value::Bool(y)) => x == y,
-            (Value::Object(Object::String(x)), Value::Object(Object::String(y))) => x.len() == y.len() && x.eq(&y),
+            (Value::Object(x), Value::Object(y)) => {
+                let x = x.to_string();
+                let y = y.to_string();
+
+                x.len() == y.len() && x.eq(&y)
+            }
             (_, _) => false,
         };
 
