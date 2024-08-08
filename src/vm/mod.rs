@@ -16,10 +16,12 @@ pub enum InterpretResult {
 }
 
 impl VirtualMachine {
-    pub fn interpret(source: &str) -> InterpretResult {
+    pub fn interpret(source: &str, print_debug: bool) -> InterpretResult {
         let mut chunk = Chunk::create();
         if compile(&mut chunk, source) {
-            println!("{:?}", chunk);
+            if print_debug {
+                println!("{:?}", chunk);
+            }
             VirtualMachine::run(chunk)
         } else {
             InterpretResult::CompileError
@@ -92,7 +94,7 @@ impl VirtualMachine {
                             }
                         }
                     }
-                },
+                }
                 GetGlobal => {
                     todo!()
                 }

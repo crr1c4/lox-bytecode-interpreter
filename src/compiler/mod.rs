@@ -1,4 +1,5 @@
 mod parser;
+mod parse_fn;
 
 use crate::chunk::op_code::OpCode;
 use crate::chunk::Chunk;
