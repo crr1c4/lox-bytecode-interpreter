@@ -1,12 +1,16 @@
-use std::collections::HashMap;
-
 use crate::chunk::op_code::OpCode::{self, *};
 use crate::chunk::Chunk;
+use crate::chunk::Line;
 use crate::compiler::compile;
-use crate::value::object::Object;
 use crate::value::Value;
+use std::collections::HashMap;
 
-pub struct VirtualMachine;
+
+#[derive(Debug)]
+pub struct VirtualMachine {
+    stack: Vec<Value>,
+    globals: HashMap<String, Value>,
+}
 
 #[derive(PartialEq, Debug)]
 pub enum InterpretResult {
@@ -16,91 +20,96 @@ pub enum InterpretResult {
 }
 
 impl VirtualMachine {
-    pub fn interpret(source: &str, print_debug: bool) -> InterpretResult {
-        let mut chunk = Chunk::create();
-        if compile(&mut chunk, source) {
-            if print_debug {
-                println!("{:?}", chunk);
-            }
-            VirtualMachine::run(chunk)
-        } else {
-            InterpretResult::CompileError
+    pub fn initialize() -> Self {
+        Self {
+            stack: Vec::new(),
+            globals: HashMap::new(),
         }
-
-        // compile(source);
-        // InterpretResult::Ok
     }
 
-    fn run(chunk: Chunk) -> InterpretResult {
-        let mut stack: Vec<Value> = vec![];
-        let mut globals: HashMap<String, Value> = HashMap::new();
+    pub fn interpret(&mut self, source: &str, debug_chunk: bool) -> InterpretResult {
+        let mut chunk = Chunk::create();
 
-        for (code, line) in chunk.codes.iter() {
-            match code {
+        if !compile(&mut chunk, source) {
+            return InterpretResult::CompileError;
+        }
+
+        if debug_chunk {
+            println!("{:?}", chunk);
+        }
+
+        self.run(chunk)
+    }
+
+    fn run(&mut self, chunk: Chunk) -> InterpretResult {
+        for (op_code, line) in chunk.iter() {
+            match op_code {
                 Return => return InterpretResult::Ok,
-                Constant(constant) => stack.push(constant.clone()),
-                Add => match (stack.pop(), stack.pop()) {
-                    (Some(Value::Number(b)), Some(Value::Number(a))) => stack.push(Value::Number(a + b)),
-                    (Some(Value::Object(b)), Some(Value::Object(a))) => match VirtualMachine::concatenate(a, b, &mut stack) {
-                        InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operands must be a number or strings", *line),
-                        _ => (),
-                    },
-                    (_, _) => (),
-                },
-
-                Substract | Multiply | Divide => match VirtualMachine::binary_operation(&mut stack, code) {
-                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operands must be a number", *line),
-                    _ => (),
-                },
-                Negate => match stack.pop() {
-                    Some(Value::Number(number)) => {
-                        let negation = -number;
-                        stack.push(Value::Number(negation))
+                Constant(constant) => self.stack.push(constant.clone()),
+                Add => {
+                    if self.interpret_addition() == InterpretResult::RuntimeError {
+                        return self.throw_error("Operands must be a number or strings.", *line);
                     }
-                    _ => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
-                },
-                Nil => stack.push(Value::Nil),
-                True => stack.push(Value::Bool(true)),
-                False => stack.push(Value::Bool(false)),
-                Not => {
-                    let value = stack.pop().unwrap();
-                    let value = VirtualMachine::is_falsey(value);
-                    stack.push(Value::Bool(value));
                 }
-                Equal => match VirtualMachine::values_equal(&mut stack) {
-                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
-                    _ => (),
-                },
-                Greater | Less => match VirtualMachine::binary_boolean_operation(code, &mut stack) {
-                    InterpretResult::RuntimeError => return VirtualMachine::throw_runtime_error("Operand must be a number", *line),
-                    _ => (),
-                },
+                Substract | Multiply | Divide => {
+                    if self.interpret_binary_operation(op_code) == InterpretResult::RuntimeError {
+                        return self.throw_error("Operands must be a number.", *line);
+                    }
+                }
+                Negate => {
+                    if let Some(Value::Number(number)) = self.stack.pop() {
+                        self.stack.push(Value::Number(-number));
+                    } else {
+                        self.throw_error("Operands must be a number.", *line);
+                    }
+                }
+                Nil => self.stack.push(Value::Nil),
+                True => self.stack.push(Value::from(true)),
+                False => self.stack.push(Value::from(false)),
+                Not => {
+                    let is_falsey = self.is_falsey();
+                    self.stack.push(Value::from(is_falsey));
+                }
+                Equal => {
+                    if self.interpret_values_equal() == InterpretResult::RuntimeError {
+                        return self.throw_error("Operand must be a number.", *line);
+                    }
+                }
+                Greater | Less => {
+                    if self.interpret_binary_boolean_operation(op_code) == InterpretResult::RuntimeError {
+                        return self.throw_error("Operand must be a number.", *line);
+                    }
+                }
                 Print => {
-                    if let Some(value) = stack.pop() {
+                    if let Some(value) = self.stack.pop() {
                         println!("{value}")
                     }
                 }
                 Pop => {
-                    stack.pop();
+                    self.stack.pop();
                 }
                 DefineGlobal => {
-                    // WARNING: Check this
-                    if let Some(name) = stack.last() {
-                        if let Value::Object(name) = name {
-                            let name = name.to_string();
-
-                            if let Some(value) = stack.pop() {
-                                globals.insert(name, value);
-                            }
-                        }
+                    if let (Some(name), Some(value)) = (self.stack.pop(), self.stack.pop()) {
+                        self.globals.insert(name.to_string(), value);
                     }
                 }
                 GetGlobal => {
-                    todo!()
+                    if let Some(name) = self.stack.pop() {
+                        match self.globals.get(&name.to_string()) {
+                            Some(value) => self.stack.push(value.clone()),
+                            None => return self.throw_error(&format!("Undefined variable '{}'", name), *line),
+                        }
+                    }
                 }
 
                 SetGlobal => {
-                    todo!()
+                    if let Some(name) = self.stack.pop() {
+                        match self.globals.get_mut(&name.to_string()) {
+                            // TODO: Check and verify the unwrap.
+                            Some(value) => *value = self.stack.pop().unwrap(),
+                            None => return self.throw_error(&format!("Undefined variable '{}'", name), *line),
+                        }
+                    }
                 }
             };
         }
@@ -108,43 +117,51 @@ impl VirtualMachine {
         InterpretResult::Ok
     }
 
-    fn binary_operation(stack: &mut Vec<Value>, code: &OpCode) -> InterpretResult {
-        let (b, a) = match (stack.pop(), stack.pop()) {
-            (Some(Value::Number(b)), Some(Value::Number(a))) => (b, a),
-            _ => return InterpretResult::RuntimeError,
+    fn interpret_binary_operation(&mut self, code: &OpCode) -> InterpretResult {
+        if let (Some(Value::Number(b)), Some(Value::Number(a))) = (self.stack.pop(), self.stack.pop()) {
+            let result = match code {
+                Substract => a - b,
+                Multiply => a * b,
+                Divide => a / b,
+                _ => unreachable!(),
+            };
+
+            self.stack.push(Value::Number(result));
+            InterpretResult::Ok
+        } else {
+            InterpretResult::RuntimeError
+        }
+    }
+
+    fn interpret_addition(&mut self) -> InterpretResult {
+        let (Some(b), Some(a)) = (self.stack.pop(), self.stack.pop()) else {
+            return InterpretResult::RuntimeError;
         };
 
-        let result = match code {
-            // Add => a + b,
-            Substract => a - b,
-            Multiply => a * b,
-            Divide => a / b,
-            _ => unreachable!(),
-        };
+        if let (Value::Number(a), Value::Number(b)) = (&a, &b) {
+            self.stack.push(Value::from(a + b));
+        }
 
-        stack.push(Value::Number(result));
+        if let (Value::Object(a), Value::Object(b)) = (&a, &b) {
+            return self.concatenate(a.to_string(), b.to_string());
+        }
 
         InterpretResult::Ok
     }
 
-    fn concatenate(a: Box<dyn Object>, b: Box<dyn Object>, stack: &mut Vec<Value>) -> InterpretResult {
-        let mut a = a.to_string();
-        let b = b.to_string();
-
+    fn concatenate(&mut self, mut a: String, b: String) -> InterpretResult {
         a.push_str(&b);
-
-        stack.push(Value::Object(Box::new(a)));
-
+        self.stack.push(Value::from(a));
         InterpretResult::Ok
     }
 
-    fn binary_boolean_operation(code: &OpCode, stack: &mut Vec<Value>) -> InterpretResult {
-        let b = match stack.pop() {
+    fn interpret_binary_boolean_operation(&mut self, code: &OpCode) -> InterpretResult {
+        let b = match self.stack.pop() {
             Some(Value::Number(number)) => number,
             _ => return InterpretResult::RuntimeError,
         };
 
-        let a = match stack.pop() {
+        let a = match self.stack.pop() {
             Some(Value::Number(number)) => number,
             _ => return InterpretResult::RuntimeError,
         };
@@ -155,31 +172,33 @@ impl VirtualMachine {
             _ => unreachable!(),
         };
 
-        stack.push(Value::Bool(result));
+        self.stack.push(Value::Bool(result));
 
         InterpretResult::Ok
     }
 
-    fn throw_runtime_error(message: &str, line: u32) -> InterpretResult {
+    fn throw_error(&self, message: &str, line: Line) -> InterpretResult {
         eprintln!("{} [line {}] in script.", message, line);
         InterpretResult::RuntimeError
     }
 
-    fn is_falsey(value: Value) -> bool {
-        match value {
-            Value::Nil | Value::Bool(_) => true,
-            Value::Number(_) => false,
-            _ => unreachable!(),
+    // TODO: REMOVE THE STACK POP AND PASS IT AS A PARAMTER
+    /// Checks if value is falsy. Nil and false values are falsy and every other value behaves like true.
+    fn is_falsey(&mut self) -> bool {
+        match self.stack.pop() {
+            Some(Value::Nil) | Some(Value::Bool(false)) => true,
+            _ => false,
         }
     }
 
-    fn values_equal(stack: &mut Vec<Value>) -> InterpretResult {
-        let b = match stack.pop() {
+    // TODO: Refactor this code.
+    fn interpret_values_equal(&mut self) -> InterpretResult {
+        let b = match self.stack.pop() {
             Some(value) => value,
             _ => return InterpretResult::RuntimeError,
         };
 
-        let a = match stack.pop() {
+        let a = match self.stack.pop() {
             Some(value) => value,
             _ => return InterpretResult::RuntimeError,
         };
@@ -197,7 +216,7 @@ impl VirtualMachine {
             (_, _) => false,
         };
 
-        stack.push(Value::Bool(result));
+        self.stack.push(Value::Bool(result));
 
         InterpretResult::Ok
     }

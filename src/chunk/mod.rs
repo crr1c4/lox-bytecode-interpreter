@@ -4,14 +4,15 @@ use op_code::OpCode;
 use std::fmt::Debug;
 use std::ops::Deref;
 
+pub type Line = u32;
+
 #[derive(Default)]
 pub struct Chunk {
-    // NOTE: u32 field in the tuple refers to the line of the operation code.
-    pub codes: Vec<(OpCode, u32)>,
+    codes: Vec<(OpCode, Line)>,
 }
 
 impl Deref for Chunk {
-    type Target = Vec<(OpCode, u32)>;
+    type Target = Vec<(OpCode, Line)>;
 
     fn deref(&self) -> &Self::Target {
         &self.codes
@@ -24,7 +25,7 @@ impl Debug for Chunk {
 
         for (index, (code, line)) in self.codes.iter().enumerate() {
             write!(f, "{:04} ", index)?;
-            
+
             let code_index = if index > 0 { index - 1 } else { index };
 
             match self.codes.get(code_index) {
@@ -44,7 +45,7 @@ impl Chunk {
         Self::default()
     }
 
-    pub fn write(&mut self, code: OpCode, line: u32) {
+    pub fn write(&mut self, code: OpCode, line: Line) {
         self.codes.push((code, line));
     }
 }

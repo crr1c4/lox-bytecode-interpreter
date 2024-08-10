@@ -1,17 +1,21 @@
 // BUG: Add error messages for Object
-// TODO: Add a linked list for Object values (page 352)
 
 pub mod object;
 
+use derive_more::derive::Display;
+use derive_more::derive::Debug;
 use crate::value::object::Object;
-use std::fmt::Display;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Display, Debug)]
+#[display("{_0}")]
 pub enum Value {
     Bool(bool),
     #[default]
+    #[display("Nil")]
+    #[debug("Nil")]
     Nil,
     Number(f64),
+    #[debug("{_0}")]
     Object(Box<dyn Object>),
 }
 
@@ -30,18 +34,5 @@ impl From<f64> for Value {
 impl From<String> for Value {
     fn from(value: String) -> Self {
         Self::Object(Box::new(value))
-    }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = match self {
-            Value::Number(number) => format!("{number}"),
-            Value::Bool(boolean) => format!("{boolean}"),
-            Value::Nil => format!("Nil"),
-            Value::Object(value) => format!("{value}"),
-        };
-
-        write!(f, "{}", value)
     }
 }
