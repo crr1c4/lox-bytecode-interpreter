@@ -1,5 +1,4 @@
 // TODO: Check unwrap() lines.
-// BUG: Primitive expressions cause loops.
 
 use crate::chunk::op_code::OpCode;
 use crate::chunk::Chunk;
@@ -175,11 +174,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn emit_binary(&mut self, can_assign: bool) {
+    fn emit_binary(&mut self, _can_assign: bool) {
         if let Some(token) = &self.previous_token {
             let operator_kind = token.kind;
             let rule = self.rules.get(&operator_kind).unwrap();
-            self.parse_precedence(Precedence::from(rule.precedence as u32 + 1));
+
+            if let Ok(precedence) = Precedence::try_from(u8::from(rule.precedence) + 1) {
+                self.parse_precedence(precedence);
+            }
+
+            // TODO: add err message for precedence.
 
             match operator_kind {
                 TokenKind::Plus => self.emit_byte(OpCode::Add),
@@ -239,13 +243,6 @@ impl<'a> Parser<'a> {
         }
 
         token_match
-
-        // if !self.check(kind) {
-        //     return false;
-        // }
-        //
-        // self.advance();
-        // true
     }
 
     /// Checks if the token has the given kind.
@@ -292,7 +289,14 @@ impl<'a> Parser<'a> {
             }
 
             match token.kind {
-                TokenKind::Class | TokenKind::Fun | TokenKind::Var | TokenKind::For | TokenKind::If | TokenKind::While | TokenKind::Print | TokenKind::Return => return,
+                TokenKind::Class
+                | TokenKind::Fun
+                | TokenKind::Var
+                | TokenKind::For
+                | TokenKind::If
+                | TokenKind::While
+                | TokenKind::Print
+                | TokenKind::Return => return,
                 _ => (),
             }
 

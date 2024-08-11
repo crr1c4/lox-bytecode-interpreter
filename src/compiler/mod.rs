@@ -15,8 +15,6 @@ pub fn compile(chunk: &mut Chunk, source: &str) -> bool {
         parser.emit_declaration();
     }
 
-    // parser.expression();
-    // parser.consume(TokenKind::EOF, "Expect end of expression");
     parser.end_compiler();
     !parser.had_error
 }

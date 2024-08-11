@@ -1,7 +1,6 @@
 // TODO: Write tests.
 // TODO: Refactor code.
 // TODO: Add thiserror crate.
-// TODO: Finish compiler global variables support.
 // TODO: Add docs.
 
 mod chunk;
