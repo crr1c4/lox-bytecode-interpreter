@@ -4,20 +4,27 @@
 // TODO: Add docs.
 
 mod chunk;
+mod cli;
 mod compiler;
+mod error;
 mod scanner;
 mod value;
 mod vm;
 
 use crate::vm::InterpretResult;
+use crate::vm::VirtualMachine;
 
 use clap::Parser;
 use std::path::PathBuf;
-use vm::VirtualMachine;
 
 use std::fs::read_to_string;
 use std::io::{stdin, stdout, Write};
+
+use rustyline::{DefaultEditor, Result};
+
 use std::process::exit;
+
+pub struct CLI {}
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -56,14 +63,16 @@ fn run_file(path: PathBuf, debug: bool) {
         InterpretResult::CompileError => exit(65),
         InterpretResult::RuntimeError => exit(70),
         InterpretResult::Ok => (),
-    };
+    }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.path {
         Some(path) => run_file(path, args.debug),
         None => repl(args.debug),
     }
+
+    Ok(())
 }

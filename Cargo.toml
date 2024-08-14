@@ -10,4 +10,7 @@ description = "Lox interpreter written in Rust"
 [dependencies]
 clap = { version = "4.5.13", features = ["derive"] }
 derive_more = { version = "1", features = ["display", "debug"] }
+dyn-clone = "1.0.17"
 num_enum = "0.7.3"
+rustyline = "14.0.0"
+thiserror = "1.0.63"
