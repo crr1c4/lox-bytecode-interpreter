@@ -1,18 +1,7 @@
-use std::fmt::Display;
-// use dyn_clone::DynClone;
+use derive_more::Display;
 
-pub trait Object: Display {
-    fn clone_object(&self) -> Box<dyn Object>;
-}
-
-impl Object for String {
-    fn clone_object(&self) -> Box<dyn Object> {
-        Box::new(self.clone())
-    }
-}
-
-impl Clone for Box<dyn Object> {
-    fn clone(&self) -> Self {
-        self.clone_object()
-    }
+#[derive(Clone, Display)]
+pub enum Object {
+    #[display("{_0}")]
+    Str(String),
 }

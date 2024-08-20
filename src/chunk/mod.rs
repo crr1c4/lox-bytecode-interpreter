@@ -1,51 +1,23 @@
-pub mod op_code;
+use crate::opcode::OpCode;
+use crate::Line;
+use derive_more::Debug;
 
-use op_code::OpCode;
-use std::fmt::Debug;
-use std::ops::Deref;
+#[derive(Debug)]
+#[debug("{:04}\t{:?}", _1, _0)]
+pub struct Code(pub OpCode, pub Line);
 
-pub type Line = u32;
-
-#[derive(Default)]
+#[derive(Debug)]
+#[debug("Chunk {:p} {:#?}", self, self.codes)]
 pub struct Chunk {
-    codes: Vec<(OpCode, Line)>,
-}
-
-impl Deref for Chunk {
-    type Target = Vec<(OpCode, Line)>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.codes
-    }
-}
-
-impl Debug for Chunk {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "--- Chunk {:p} ---", self)?;
-
-        for (index, (code, line)) in self.codes.iter().enumerate() {
-            write!(f, "{:04} ", index)?;
-
-            let code_index = if index > 0 { index - 1 } else { index };
-
-            match self.codes.get(code_index) {
-                Some((_, previous)) if index > 0 && line == previous => write!(f, "   | ")?,
-                _ => write!(f, "{:4} ", line)?,
-            };
-
-            writeln!(f, "{:?}", code)?;
-        }
-
-        write!(f, "--- --- --- --- --- --- ---")
-    }
+    pub codes: Vec<Code>,
 }
 
 impl Chunk {
-    pub fn create() -> Self {
-        Self::default()
+    pub fn new() -> Self {
+        Self { codes: vec![] }
     }
 
-    pub fn write(&mut self, code: OpCode, line: Line) {
-        self.codes.push((code, line));
+    pub fn write(&mut self, opcode: OpCode, line: Line) {
+        self.codes.push(Code(opcode, line));
     }
 }

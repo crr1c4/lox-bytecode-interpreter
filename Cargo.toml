@@ -5,12 +5,14 @@ edition = "2021"
 authors = ["crr1c4"]
 description = "Lox interpreter written in Rust"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "lox"
+path = "src/lib.rs"
 
 [dependencies]
+anyhow = "1.0.86"
 clap = { version = "4.5.13", features = ["derive"] }
 derive_more = { version = "1", features = ["display", "debug"] }
-dyn-clone = "1.0.17"
 num_enum = "0.7.3"
 rustyline = "14.0.0"
 thiserror = "1.0.63"

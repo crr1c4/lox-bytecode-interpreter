@@ -35,10 +35,10 @@ pub enum OpCode {
     Greater,
     #[debug("OP_LESS")]
     Less,
-    #[debug("OP_DEFINE_GLOBAL")]
-    DefineGlobal,
-    #[debug("OP_GET_GLOBAL")]
-    GetGlobal,
-    #[debug("OP_SET_GLOBAL")]
-    SetGlobal,
+    #[debug("{: <16} {}", "OP_DEFINE_GLOBAL", _0)]
+    DefineGlobal(String),
+    #[debug("{: <16} {}", "OP_GET_GLOBAL", _0)]
+    GetGlobal(String),
+    #[debug("{: <16} {}", "OP_SET_GLOBAL", _0)]
+    SetGlobal(String),
 }

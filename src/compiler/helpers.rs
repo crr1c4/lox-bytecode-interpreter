@@ -4,6 +4,8 @@ use super::rules::ParseRule;
 use crate::scanner::token::TokenKind;
 use std::collections::HashMap;
 
+// TODO: IMPLIMENT INDEX TRAIT AND PASS IT TP PARSER
+
 pub fn create_rules() -> HashMap<TokenKind, ParseRule> {
     HashMap::from([
         (TokenKind::LeftParen, ParseRule::new(Some(ParseFn::Grouping), None, Precedence::None)),

@@ -1,18 +1,63 @@
 // TODO: Check unwrap() lines.
 
-use crate::chunk::op_code::OpCode;
+use super::helpers::create_rules;
+use super::precedence::Precedence;
+use super::rules::ParseFn;
+use super::rules::ParseRule;
+use crate::chunk::opcode::OpCode;
 use crate::chunk::Chunk;
-use crate::compiler::helpers::create_rules;
-use crate::compiler::rules::ParseFn;
-use crate::compiler::rules::ParseRule;
-use crate::scanner::token::TokenKind;
 use crate::scanner::token::*;
 use crate::scanner::Scanner;
 use crate::value::Value;
-
 use std::collections::HashMap;
 
-use super::precedence::Precedence;
+// NOTE: Local variables structs.
+// TODO: Move to compiler/mod.rs
+
+#[derive(Default, Debug)]
+struct Compiler {
+    locals: Vec<Local>,
+    scope_depth: u32,
+}
+
+// if self.current_compiler.count == u8::MAX.into() + 1 {
+//     self.error_at(Box::new(name), "Too many local variables in function.");
+//     return;
+// }
+//
+// if let Some(local) = self.current_compiler.locals.get(self.current_compiler.count) {
+//    k
+
+impl Compiler {
+    fn add_local(&mut self, name: &Token) {
+        self.locals.push(Local {
+            name: name.clone(),
+            depth: self.scope_depth,
+        });
+    }
+
+    // fn depth(&self) -> u32 {
+    //     self.locals.iter()
+    // }
+
+    fn count(&self) -> u32 {
+        self.locals.len() as u32
+    }
+}
+
+#[derive(Debug)]
+struct Local {
+    name: Token,
+    depth: u32,
+}
+
+impl Compiler {
+    fn initialize() -> Self {
+        Self::default()
+    }
+}
+
+// ------------------------------
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -23,6 +68,7 @@ pub struct Parser<'a> {
     pub had_error: bool,
     panic_mode: bool,
     rules: HashMap<TokenKind, ParseRule>,
+    current_compiler: Compiler,
 }
 
 impl<'a> Parser<'a> {
@@ -35,6 +81,7 @@ impl<'a> Parser<'a> {
             had_error: false,
             panic_mode: false,
             rules: create_rules(),
+            current_compiler: Compiler::initialize(),
         }
     }
 
@@ -309,6 +356,10 @@ impl<'a> Parser<'a> {
     fn emit_statement(&mut self) {
         if self.match_token(TokenKind::Print) {
             self.emit_print_statement();
+        } else if self.match_token(TokenKind::LeftBrace) {
+            self.begin_scope();
+            self.emit_block();
+            self.end_scope();
         } else {
             self.emit_expression_statement();
         }
@@ -353,6 +404,15 @@ impl<'a> Parser<'a> {
 
     fn parse_variable(&mut self, message: &str) -> OpCode {
         self.consume(TokenKind::Identifier, message);
+
+        self.declare_variable();
+        if self.current_compiler.scope_depth > 0 {
+            // TODO: Check this
+            // BUG: Parse this option opcode return value. it interprets a return , manage it with
+            // if let :)
+            return OpCode::Return;
+        }
+
         self.parse_identifier_constant()
     }
 
@@ -376,6 +436,12 @@ impl<'a> Parser<'a> {
     /// is when parsing an assignment expression or top level expression like in an expression
     /// statement.
     fn emit_named_variable(&mut self, can_assign: bool) {
+        let get_op: OpCode;
+        let set_op: OpCode;
+
+
+        // let arg = self.resolve_constant();
+
         let arg = self.parse_identifier_constant();
 
         if self.match_token(TokenKind::Equal) && can_assign {
@@ -389,7 +455,75 @@ impl<'a> Parser<'a> {
     }
 
     fn define_variable(&mut self, global: OpCode) {
+        if self.current_compiler.scope_depth > 0 {
+            return;
+        }
+
         self.emit_byte(global);
         self.emit_byte(OpCode::DefineGlobal);
+    }
+
+    fn declare_variable(&mut self) {
+        // If we're in the top-level global scope, we just bail out.
+        if self.current_compiler.scope_depth == 0 {
+            return;
+        }
+
+        // For local variables it needs to remember that the variable exists.
+        if let Some(name) = &self.previous_token {
+            // Shadowing verification.
+            for local in self.current_compiler.locals.iter().rev() {
+                if local.depth != 1 && local.depth < self.current_compiler.scope_depth {
+                    break;
+                }
+
+                // WARNING: CHANGE REFERENCES AND USE THIS ERROR LABRERY
+                //
+                if *name.as_ref() == local.name {
+                    // self.error_at(Box::new(local.name.clone()), "Already a variable with this name in the scope.")
+                    eprintln!("Already a variable with this name in the scope.")
+                }
+            }
+
+            self.current_compiler.add_local(name);
+        }
+    }
+
+    // NOTE: Block statements.
+
+    /// It keeps parsing declarations and statements until it hits the closing brace. As we do with
+    /// any loop in the parser, we also checl for the end of the token stream.
+    fn emit_block(&mut self) {
+        while !self.check(TokenKind::RightBrace) && !self.check(TokenKind::EOF) {
+            self.emit_declaration();
+        }
+
+        self.consume(TokenKind::RightBrace, "Expect '}' after block.");
+    }
+
+    fn begin_scope(&mut self) {
+        self.current_compiler.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.current_compiler.scope_depth -= 1;
+
+        // WARNING: check number
+        // TODO: CHECK FUNCTIONAL METHOD
+        let mut pops = 0;
+
+        for local in self.current_compiler.locals.iter().rev() {
+            if self.current_compiler.count() > 0 && local.depth > self.current_compiler.scope_depth {
+                pops += 1;
+            }
+        }
+
+        self.current_compiler.scope_depth -= pops;
+
+        for _ in 1..=pops {
+             self.emit_byte(OpCode::Pop);
+        }
+
+
     }
 }
