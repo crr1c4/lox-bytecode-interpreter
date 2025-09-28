@@ -1,7 +1,7 @@
 use thiserror::Error;
 use std::path::Path;
-use crate::Line;
-use crate::Identifier;
+use crate::lox::Line;
+use crate::lox::Identifier;
 
 // #[derive(PartialEq, Error, Debug)]
 // pub enum CompileError {

@@ -1,4 +1,4 @@
-use crate::Line;
+use super::Line;
 use derive_more::Debug;
 use derive_more::Display;
 
@@ -102,6 +102,6 @@ pub enum Kind {
     While,
     // #[debug("(")]
     // ERROR,
-    #[display("EOF")]
-    EOF,
+    // #[display("EOF")]
+    // EOF,
 }

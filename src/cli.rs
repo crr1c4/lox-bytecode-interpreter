@@ -1,31 +1,31 @@
+use crate::error::LexicalError;
+use crate::lox;
+use crate::lox::scanner::Scanner;
+use crate::lox::token::Token;
+use anyhow::Result;
 use clap::Parser;
-use std::path::PathBuf;
-
-use std::fs::read_to_string;
-// use std::io::{stdin, stdout, Write};
-
+use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
-use rustyline::{DefaultEditor, Result};
-
+use std::collections::VecDeque;
+// use std::fmt::Result;
+use std::fs::read_to_string;
+use std::path::PathBuf;
 use std::process::exit;
 
-pub struct CLI {}
-
 #[derive(Parser, Debug)]
-struct Args {
+pub struct Args {
     #[arg(short, long)]
-    path: Option<PathBuf>,
-    #[arg(short, long)]
-    debug: bool,
+    pub path: Option<PathBuf>,
+    // #[arg(short, long)]
+    // pub debug: bool,
 }
 
-fn repl(debug: bool) -> Result<()> {
+pub fn run_prompt() -> Result<()> {
     let mut rl = DefaultEditor::new()?;
-    let mut vm = VirtualMachine::initialize();
 
     loop {
-        match rl.readline(">> ") {
-            Ok(line) => vm.interpret(line.trim(), debug),
+        let possible_error = match rl.readline(">> ") {
+            Ok(line) => run(line),
             Err(ReadlineError::Interrupted) => {
                 println!("Proccess terminated.");
                 break;
@@ -35,36 +35,32 @@ fn repl(debug: bool) -> Result<()> {
                 break;
             }
         };
+
+        if possible_error.is_err() {
+            eprintln!("{:?}", possible_error.unwrap());
+        }
     }
 
     Ok(())
 }
 
-fn run_file(path: PathBuf, debug: bool) -> Result<()> {
+pub fn run_file(path: PathBuf) -> Result<()> {
     let Ok(source) = read_to_string(&path) else {
         eprintln!("Could not open file {}.", path.display());
         exit(74);
     };
 
-    let mut vm = VirtualMachine::initialize();
-    match vm.interpret(&source, debug) {
-        InterpretResult::CompileError => exit(65),
-        InterpretResult::RuntimeError => exit(70),
-        InterpretResult::Ok => (),
-    }
+    run(source)?;
 
     Ok(())
 }
 
-// use crate::vm::InterpretResult;
-// use crate::vm::VirtualMachine;
-fn main() -> Result<()> {
-    let args = Args::parse();
-
-    match args.path {
-        Some(path) => run_file(path, args.debug),
-        None => repl(args.debug),
-    };
+fn run(source: String) -> anyhow::Result<()> {
+    let scanner = Scanner::new(source);
+    let tokens: VecDeque<Token> = scanner.collect::<Result<_, _>>()?;
+    for token in tokens {
+        println!("{token:?}")
+    }
 
     Ok(())
 }

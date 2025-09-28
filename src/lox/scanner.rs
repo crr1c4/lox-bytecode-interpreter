@@ -11,6 +11,24 @@ pub struct Scanner {
     line: u32,
 }
 
+impl Iterator for Scanner {
+    type Item = Result<Token, LexicalError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Skips trivia.
+        // Trivia refers to characters that don't contribute to the final program, such as comments
+        // and whitespaces.
+        self.skip_comments();
+        self.skip_whitespace();
+
+        if self.is_at_end() {
+            return None;
+        }
+
+        return Some(self.next_token());
+    }
+}
+
 impl Scanner {
     /// Creates a new instance of the Scanner struct.
     pub fn new(input: String) -> Self {
@@ -21,17 +39,7 @@ impl Scanner {
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token, LexicalError> {
-        // Skips trivia.
-        // NOTE: Trivia refers to characters that don't contribute to the final program, such as comments
-        // and whitespaces.
-        self.skip_comments();
-        self.skip_whitespace();
-
-        if self.is_at_end() {
-            return Ok(Token::new(Kind::EOF, self.line, None));
-        }
-
+    fn next_token(&mut self) -> Result<Token, LexicalError> {
         let token = match (self.input.get(0), self.input.get(1)) {
             // Special cases
             (Some('.'), Some(digit)) if digit.is_ascii_digit() => return self.build_number_token(),
@@ -66,8 +74,8 @@ impl Scanner {
     }
 
     fn make_identifier_or_keyword(&mut self) -> Token {
-        while let Some(character) = self.input.front().filter(|c| c.is_ascii_alphanumeric() || **c == '_') {
-            self.current_lexeme.push(*character);
+        while let Some(character) = self.input.front() && (character.is_ascii_alphanumeric() || '_'.eq(character)) {
+            self.current_lexeme.push(self.input.pop_front().unwrap());
         }
 
         let kind = match self.current_lexeme.as_str() {

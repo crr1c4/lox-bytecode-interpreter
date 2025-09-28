@@ -2,54 +2,19 @@ mod lox;
 mod cli;
 mod error;
 
+use clap::Parser;
 use anyhow::Result;
+use cli::*;
 
-type Line = u32;
-type Identifier = String;
+fn main() -> Result<()> {
+    let args = Args::parse();
 
-use crate::lox::chunk::Chunk;
-use vm::VirtualMachine;
-// use crate::compiler::parser::Parser;
-// use crate::scanner::token::TokenKind::EOF;
+    match args.path {
+        Some(path) => run_file(path),
+        None => run_prompt(),
+    };
 
-pub fn compile(chunk: &mut Chunk, source: &str) -> Result<()> {
-    // let mut parser = Parser::new(chunk, source);
-    // parser.advance();
-    //
-    // while !parser.match_token(EOF) {
-    //     parser.emit_declaration();
-    // }
-    //
-    // parser.end_compiler();
-    // // !parser.had_error
-    Ok(())
-}
-
-pub fn interpret(source: &str, debug: bool, vm: &mut VirtualMachine) -> Result<()> {
-    let mut chunk = Chunk::new();
-    compile(&mut chunk, source)?;
-
-    if debug {
-        println!("{:?}", chunk);
-    }
-
-    vm.run(chunk)?;
 
     Ok(())
 }
-// TODO: Write tests.
-// TODO: Refactor code.
-// TODO: Add thiserror crate.
-// TODO: Add docs.
 
-use lox::chunk::Chunk;
-use lox::opcode::OpCode;
-
-fn main() {
-    let mut chunk = Chunk::new();
-    chunk.write(OpCode::Add, 1);
-    chunk.write(OpCode::Add, 2);
-    chunk.write(OpCode::Constant(4.56.into()), 3);
-    chunk.write(OpCode::Constant("hola".to_string().into()), 3);
-    println!("{:?}", chunk);
-}
