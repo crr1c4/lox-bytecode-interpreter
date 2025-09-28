@@ -1,6 +1,6 @@
+use super::token::Kind;
+use super::token::Token;
 use crate::error::LexicalError;
-use crate::token::Kind;
-use crate::token::Token;
 use std::collections::VecDeque;
 use std::mem;
 
@@ -161,14 +161,16 @@ impl Scanner {
             self.input.pop_front();
             self.input.pop_front();
 
-            while let Some(character) = self.input.front() {
+            while let Some(character) = self.input.front()
+                && character == '\n'
+            {
                 // If the current character is a newline, consume it, increment the line count,
                 // and break out of the inner loop (end of the comment line).
-                if character.eq(&'\n') {
-                    self.input.pop_front();
-                    self.line += 1;
-                    break;
-                }
+                // if character.eq(&'\n') {
+                self.input.pop_front();
+                self.line += 1;
+                break;
+                // }
 
                 // Consumes the character of the comment.
                 self.input.pop_front();

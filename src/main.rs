@@ -7,7 +7,7 @@ use anyhow::Result;
 type Line = u32;
 type Identifier = String;
 
-use crate::chunk::Chunk;
+use crate::lox::chunk::Chunk;
 use vm::VirtualMachine;
 // use crate::compiler::parser::Parser;
 // use crate::scanner::token::TokenKind::EOF;

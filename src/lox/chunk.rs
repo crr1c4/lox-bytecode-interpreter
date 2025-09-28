@@ -1,4 +1,4 @@
-use crate::opcode::OpCode;
+use super::opcode::OpCode;
 use crate::Line;
 use derive_more::Debug;
 

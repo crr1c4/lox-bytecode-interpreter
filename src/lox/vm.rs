@@ -1,9 +1,9 @@
-use crate::chunk::Chunk;
-use crate::chunk::Code;
+use super::chunk::Chunk;
+use super::chunk::Code;
 use crate::error::RuntimeError;
-use crate::opcode::OpCode;
-use crate::value::object::Object;
-use crate::value::Value;
+use super::opcode::OpCode;
+// use super::value::object::Object;
+use super::value::Value;
 use crate::Line;
 use anyhow::Result;
 use std::collections::HashMap;
