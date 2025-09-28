@@ -10,6 +10,16 @@ use crate::Identifier;
 // }
 
 
+#[derive(thiserror::Error, Debug)]
+pub enum LexicalError {
+    #[error("[line {0}] Unterminated string.")]
+    UnterminatedString(Line),
+    #[error("[line {0}] Unexpected character.")]
+    UnexpectedCharacter(Line),
+    #[error("[line {0}] Invalid number format.")]
+    InvalidNumberFormat(Line),
+}
+
 #[derive(PartialEq, Error, Debug)]
 pub enum InputError {
     #[error("Failed to read line")]

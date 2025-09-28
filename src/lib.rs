@@ -5,6 +5,7 @@ pub mod value;
 // mod compiler;
 mod error;
 mod scanner;
+mod token;
 mod vm;
 
 use anyhow::Result;
