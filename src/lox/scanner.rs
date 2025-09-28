@@ -162,14 +162,14 @@ impl Scanner {
             self.input.pop_front();
 
             while let Some(character) = self.input.front()
-                && character == '\n'
+                && '\n'.eq(character)
             {
                 // If the current character is a newline, consume it, increment the line count,
                 // and break out of the inner loop (end of the comment line).
                 // if character.eq(&'\n') {
                 self.input.pop_front();
                 self.line += 1;
-                break;
+                // break;
                 // }
 
                 // Consumes the character of the comment.
