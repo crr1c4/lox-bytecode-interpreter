@@ -1,5 +1,3 @@
-pub mod object;
-
 use crate::value::object::Object;
 use derive_more::derive::Debug;
 use derive_more::derive::Display;
@@ -34,3 +32,9 @@ impl From<String> for Value {
         Self::Object(Object::Str(value))
     }
 }
+
+// #[derive(Clone, Display)]
+// pub enum Object {
+//     #[display("{_0}")]
+//     Str(String),
+// }

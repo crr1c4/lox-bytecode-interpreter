@@ -1,13 +1,9 @@
 [package]
-name = "lox-interpreter"
+name = "rlox"
 version = "0.1.0"
 edition = "2021"
 authors = ["crr1c4"]
 description = "Lox interpreter written in Rust"
-
-[lib]
-name = "lox"
-path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1.0.86"

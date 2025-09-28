@@ -222,4 +222,3 @@ impl Scanner {
         Token::new(kind, self.line, lexeme)
     }
 }
-

@@ -1,12 +1,6 @@
-pub mod chunk;
-pub mod opcode;
-pub mod value;
-// mod cli;
-// mod compiler;
+mod lox;
+mod cli;
 mod error;
-mod scanner;
-mod token;
-mod vm;
 
 use anyhow::Result;
 
