@@ -37,7 +37,7 @@ pub fn run_prompt() -> Result<()> {
         };
 
         if possible_error.is_err() {
-            eprintln!("{:?}", possible_error.unwrap());
+            eprintln!("{:?}", possible_error.unwrap_err());
         }
     }
 
