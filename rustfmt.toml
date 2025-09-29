@@ -1,1 +1,4 @@
-max_width = 180
+max_width = 125
+array_width = 100
+# control_brace_style = "AlwaysSameLine"
+# binop_separator = "Back"

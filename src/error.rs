@@ -1,14 +1,13 @@
-use thiserror::Error;
-use std::path::Path;
-use crate::lox::Line;
 use crate::lox::Identifier;
+use crate::lox::Line;
+use std::path::Path;
+use thiserror::Error;
 
 // #[derive(PartialEq, Error, Debug)]
 // pub enum CompileError {
 //     MissingSemicolon,
 //     MissingBrace
 // }
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum LexicalError {
@@ -25,7 +24,7 @@ pub enum InputError {
     #[error("Failed to read line")]
     ReadLine(),
     #[error("Failed to read {0}.")]
-    FileNotFound(Box<Path>)
+    FileNotFound(Box<Path>),
 }
 
 #[derive(PartialEq, Error, Debug)]

@@ -1,9 +1,9 @@
-mod lox;
 mod cli;
 mod error;
+mod lox;
 
-use clap::Parser;
 use anyhow::Result;
+use clap::Parser;
 use cli::*;
 
 fn main() -> Result<()> {
@@ -14,7 +14,5 @@ fn main() -> Result<()> {
         None => run_prompt(),
     };
 
-
     Ok(())
 }
-

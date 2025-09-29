@@ -16,8 +16,6 @@ use std::process::exit;
 pub struct Args {
     #[arg(short, long)]
     pub path: Option<PathBuf>,
-    // #[arg(short, long)]
-    // pub debug: bool,
 }
 
 pub fn run_prompt() -> Result<()> {
