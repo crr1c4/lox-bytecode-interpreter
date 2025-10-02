@@ -355,7 +355,7 @@ mod tests {
         let input = "
         var a = 12.3;
         var b = 3.1416;
-
+        // This is a comment and should be ignored.
         print(a + b);
         print(\"Hello world from a test\");";
         let mut scanner = Scanner::new(input.to_string());
