@@ -1,59 +1,86 @@
-use std::collections::VecDeque;
+// use std::collections::VecDeque;
+use super::chunk::Chunk;
+use crate::error::{LexicalError, SyntaxError};
+use crate::lox::Line;
+use crate::lox::opcode::OpCode;
+use crate::lox::scanner::Scanner;
+use crate::lox::value::Value;
+use std::iter::Peekable;
 
 use super::token;
-use super::token::Token;
-use derive_more::Debug;
-use derive_more::Display;
 
-#[derive(Clone, Default, Display, Debug)]
-#[display("{_0}")]
-pub enum Value {
-    Bool(bool),
-    #[display("Nil")]
-    #[debug("Nil")]
-    #[default]
-    Nil,
-    Number(f64),
-    String(String),
-}
-
-impl From<bool> for Value {
-    fn from(value: bool) -> Self {
-        Self::Bool(value)
-    }
-}
-
-impl From<f64> for Value {
-    fn from(value: f64) -> Self {
-        Self::Number(value)
-    }
-}
-
-impl From<String> for Value {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-#[derive(Debug)]
-pub enum Expression {
-    #[debug("({operator} {left:?} {right:?} )")]
-    Binary {
-        left: Box<Expression>,
-        operator: Token,
-        right: Box<Expression>,
-    },
-    #[debug("(grouping {expression:?})")]
-    Grouping { expression: Box<Expression> },
-    #[debug("{value}")]
-    Literal { value: Value },
-    #[debug("({operator} {right:?})")]
-    Unary { right: Box<Expression>, operator: Token },
-}
+/*
+ * MAYBE PUT COMPILE FUNTION UN LOX.RS? I THINK IT'S THE BEST LOCATION FOR THAT.
+ *
+ */
 
 struct Parser {
-    tokens: VecDeque<Token>,
-    current: usize,
+    scanner: Peekable<Scanner>,
+    pub chunk: Chunk,
 }
+
+impl Parser {
+    pub fn new(input: String) -> Self {
+        Self {
+            scanner: Scanner::new(input).peekable(),
+            chunk: Chunk::new(),
+        }
+    }
+
+    fn parse_expression(&mut self) {
+        // Prefix
+        // let lhs =
+    }
+
+    // Prefix expressions.
+    fn number(&mut self) -> Result<(), LexicalError> {
+        match self.scanner.next() {
+            Some(Ok(token)) if token.kind.eq(&token::Kind::Number) => {
+                let value = token.lexeme.unwrap().parse::<f64>().unwrap();
+                let line = token.line;
+
+                self.emit(OpCode::Constant(Value::Number(value)), line);
+            }
+            Some(Err(lexical_error)) => {
+                return Err(lexical_error);
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
+
+    /// Checks for an expected token kind.
+    pub fn consume<F>(&mut self, kind: token::Kind, make_syntax_error: F) -> Result<(), SyntaxError>
+    where
+        F: FnOnce(Line) -> SyntaxError,
+    {
+        if let Some(Ok(token)) = self.scanner.next()
+            && token.kind.ne(&kind)
+        {
+            // syntax_error.0 = token.line;
+            return Err(make_syntax_error(token.line));
+        }
+
+        Ok(())
+    }
+
+    fn grouping(&mut self) -> Result<(), SyntaxError> {
+        self.expression();
+        self.consume(token::Kind::RightParen, |line| SyntaxError::ExpectedRightParen(line))?;
+        Ok(())
+    }
+
+    fn expression(&mut self) {}
+
+    fn emit(&mut self, opcode: OpCode, line: Line) {
+        self.chunk.write(opcode, line);
+    }
+}
+// struct Parser {
+//     tokens: VecDeque<Token>,
+//     current: usize,
+// }
 
 // impl Parser {
 //     pub fn new(tokens: VecDeque<Token>) -> Self {

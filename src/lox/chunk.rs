@@ -1,5 +1,5 @@
+use super::Line;
 use super::opcode::OpCode;
-use crate::Line;
 use derive_more::Debug;
 
 #[derive(Debug)]

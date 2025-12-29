@@ -19,6 +19,12 @@ pub enum LexicalError {
     InvalidNumberFormat(Line),
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum SyntaxError {
+    #[error("[line {0}] Expect ')' after expression.")]
+    ExpectedRightParen(Line),
+}
+
 #[derive(PartialEq, Error, Debug)]
 pub enum InputError {
     #[error("Failed to read line")]

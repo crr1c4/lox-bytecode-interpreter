@@ -5,7 +5,7 @@ use derive_more::Debug;
 pub enum OpCode {
     #[debug("OP_RETURN")]
     Return,
-    #[debug("{: <16} {}", "OP_CONSTANT", _0)]
+    #[debug("{: <16} {:?}", "OP_CONSTANT", _0)]
     Constant(Value),
     #[debug("OP_NEGATE")]
     Negate,

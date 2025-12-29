@@ -45,7 +45,7 @@ impl Scanner {
             // (Some('.'), Some(digit)) if digit.is_ascii_digit() => return self.build_number_token(),
             (Some(digit), _) if digit.is_ascii_digit() => return self.build_number_token(),
             (Some('"'), _) => return self.build_string_token(),
-            (Some(ch), _) if ch.is_alphabetic() || *ch == '_' => self.make_identifier_or_keyword(),
+            (Some(ch), _) if ch.is_alphabetic() || *ch == '_' => self.build_identifier_or_keyword(),
             // Single character
             (Some('('), _) => self.build_token(Kind::LeftParen),
             (Some(')'), _) => self.build_token(Kind::RightParen),
@@ -73,7 +73,7 @@ impl Scanner {
         Ok(token)
     }
 
-    fn make_identifier_or_keyword(&mut self) -> Token {
+    fn build_identifier_or_keyword(&mut self) -> Token {
         while let Some(ch) = self.input.front()
             && (ch.is_ascii_alphanumeric() || *ch == '_')
         {
